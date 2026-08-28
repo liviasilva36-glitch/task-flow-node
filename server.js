@@ -109,6 +109,142 @@ app.delete("/usuarios/:id", (req, res) => {
   res.json({ mensagem: "Usuário removido", id });
 });
 
+// --- ROTAS DE ESTATÍSTICAS ---
+
+// Nível 2: Resumo em texto descritivo
+app.get("/estatisticas/resumo", (req, res) => {
+  const total = tarefas.length;
+  const concluida = tarefas.filter((t) => t.coluna === "concluido").length;
+  const andamento = tarefas.filter((t) => t.coluna === "andamento").length;
+  const afazer = tarefas.filter((t) => t.coluna === "afazer").length;
+
+  // Calcula a prioridade mais frequente
+  const contagemPrioridade = { alta: 0, media: 0, baixa: 0 };
+  tarefas.forEach((t) => {
+    if (t.prioridade && contagemPrioridade[t.prioridade] !== undefined) {
+      contagemPrioridade[t.prioridade]++;
+    }
+  });
+
+  let prioridadeMaisComum = "nenhuma";
+  let maxPrio = 0;
+  for (const [prio, qtd] of Object.entries(contagemPrioridade)) {
+    if (qtd > maxPrio) {
+      maxPrio = qtd;
+      prioridadeMaisComum = prio;
+    }
+  }
+
+  const frase = `Você tem ${total} tarefas. ${concluida} concluida(s), ${andamento} em andamento e ${afazer} a fazer. Prioridade mais comum: ${prioridadeMaisComum}.`;
+
+  res.json({ resumo: frase });
+});
+
+// Rota base + Nível 1: Estatísticas completas com filtro opcional por coluna
+app.get("/estatisticas", (req, res) => {
+  const { coluna } = req.query;
+
+  // Filtra por coluna se o Query Param for fornecido
+  const lista = coluna ? tarefas.filter((t) => t.coluna === coluna) : tarefas;
+
+  const porColuna = {
+    afazer: lista.filter((t) => t.coluna === "afazer").length,
+    andamento: lista.filter((t) => t.coluna === "andamento").length,
+    concluido: lista.filter((t) => t.coluna === "concluido").length,
+  };
+
+  const porPrioridade = {
+    alta: lista.filter((t) => t.prioridade === "alta").length,
+    media: lista.filter((t) => t.prioridade === "media").length,
+    baixa: lista.filter((t) => t.prioridade === "baixa").length,
+  };
+
+  // Identifica a coluna com maior quantidade de tarefas
+  let colunaComMaisTarefas = "afazer";
+  let maxQtd = -1;
+  for (const [col, qtd] of Object.entries(porColuna)) {
+    if (qtd > maxQtd) {
+      maxQtd = qtd;
+      colunaComMaisTarefas = col;
+    }
+  }
+
+  res.json({
+    totalGeral: lista.length,
+    porColuna,
+    porPrioridade,
+    colunaComMaisTarefas,
+  });
+});
+
+// --- ROTAS DE ESTATÍSTICAS ---
+
+// Nível 2: Resumo em texto descritivo
+app.get("/estatisticas/resumo", (req, res) => {
+  const total = tarefas.length;
+  const concluida = tarefas.filter((t) => t.coluna === "concluido").length;
+  const andamento = tarefas.filter((t) => t.coluna === "andamento").length;
+  const afazer = tarefas.filter((t) => t.coluna === "afazer").length;
+
+  // Calcula a prioridade mais frequente
+  const contagemPrioridade = { alta: 0, media: 0, baixa: 0 };
+  tarefas.forEach((t) => {
+    if (t.prioridade && contagemPrioridade[t.prioridade] !== undefined) {
+      contagemPrioridade[t.prioridade]++;
+    }
+  });
+
+  let prioridadeMaisComum = "nenhuma";
+  let maxPrio = 0;
+  for (const [prio, qtd] of Object.entries(contagemPrioridade)) {
+    if (qtd > maxPrio) {
+      maxPrio = qtd;
+      prioridadeMaisComum = prio;
+    }
+  }
+
+  const frase = `Você tem ${total} tarefas. ${concluida} concluida(s), ${andamento} em andamento e ${afazer} a fazer. Prioridade mais comum: ${prioridadeMaisComum}.`;
+
+  res.json({ resumo: frase });
+});
+
+// Rota base + Nível 1: Estatísticas completas com filtro opcional por coluna
+app.get("/estatisticas", (req, res) => {
+  const { coluna } = req.query;
+
+  // Filtra por coluna se o Query Param for fornecido
+  const lista = coluna ? tarefas.filter((t) => t.coluna === coluna) : tarefas;
+
+  const porColuna = {
+    afazer: lista.filter((t) => t.coluna === "afazer").length,
+    andamento: lista.filter((t) => t.coluna === "andamento").length,
+    concluido: lista.filter((t) => t.coluna === "concluido").length,
+  };
+
+  const porPrioridade = {
+    alta: lista.filter((t) => t.prioridade === "alta").length,
+    media: lista.filter((t) => t.prioridade === "media").length,
+    baixa: lista.filter((t) => t.prioridade === "baixa").length,
+  };
+
+  // Identifica a coluna com maior quantidade de tarefas
+  let colunaComMaisTarefas = "afazer";
+  let maxQtd = -1;
+  for (const [col, qtd] of Object.entries(porColuna)) {
+    if (qtd > maxQtd) {
+      maxQtd = qtd;
+      colunaComMaisTarefas = col;
+    }
+  }
+
+  res.json({
+    totalGeral: lista.length,
+    porColuna,
+    porPrioridade,
+    colunaComMaisTarefas,
+  });
+});
+
 // --- TRATAMENTO DE ROTAS NÃO ENCONTRADAS ---
 app.use((req, res) => res.status(404).json({ erro: "Rota não encontrada" }));
 
