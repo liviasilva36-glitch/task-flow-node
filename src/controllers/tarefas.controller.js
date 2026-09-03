@@ -1,17 +1,25 @@
-let tarefas = [];
+let tarefas = [
+  { id: 1, texto: 'Estudar Node.js',
+     prioridade: 'alta', coluna: 'andamento' },
+  { id: 2, texto: 'Fazer exercícios',
+   prioridade: 'media', coluna: 'afazer' },
+];
 let proximoId = 1;
+
+
 
 const tarefasController = {
   listar(req, res) {
     const { coluna } = req.query;
-    let resultado = tarefas;
-    if (coluna) resultado = tarefas.filter(t => t.coluna === coluna);
+    const resultado = coluna
+    ? tarefasModel.listarPorColuna(coluna)
+    : tarefasModel.listar();
     res.json(resultado);
   },
 
   estatisticas(req, res) {
     const { coluna } = req.query;
-    const base = coluna ? tarefas.filter(t => t.coluna === coluna) : tarefas;
+    const base = coluna ? tarefasModel.listarPorColuna(coluna) : tarefasModel.listar();
     const porColuna = {
       afazer: base.filter(t => t.coluna === 'afazer').length,
       andamento: base.filter(t => t.coluna === 'andamento').length,
@@ -32,14 +40,13 @@ const tarefasController = {
   },
 
   buscarPorId(req, res) {
-    const id = parseInt(req.params.id);
-    const tarefa = tarefas.find(t => t.id === id);
+    const tarefa = tarefasModel.buscar(parseInt(req.params.id));
     if (!tarefa) return res.status(404).json({ erro: 'Tarefa não encontrada' });
     res.json(tarefa);
   },
 
   criar(req, res) {
-    const { texto, prioridade, coluna } = req.body;
+    const { texto } = req.body;
     if (!texto) return res.status(400).json({ erro: 'Texto obrigatório' });
     const nova = {
       id: proximoId++,
@@ -60,12 +67,10 @@ const tarefasController = {
   },
 
   remover(req, res) {
-    const id = parseInt(req.params.id);
-    const idx = tarefas.findIndex(t => t.id === id);
-    if (idx === -1) return res.status(404).json({ erro: 'Tarefa não encontrada' });
-    const removida = tarefas.splice(idx, 1)[0];
-    res.json({ mensagem: 'Tarefa removida', tarefa: removida });
-  }
-};
+    const removida = tarefasModel.remover(parseInt(req.params.id));
+    if(!removida) return res.status(404).json({ erro: 'Tarefa não encontrada'})
+    res.json({ mensagem: 'Tarefa removida', tarefa: removida});
+  },
+}
 
 module.exports = tarefasController;
