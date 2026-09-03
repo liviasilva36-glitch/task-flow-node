@@ -1,7 +1,6 @@
 node_modules/
 .env
 
-
-site = https://www.toptal.com/developers/gitignore
-
-taskflow API = http://localhost:3000/
+# Links e anotações precisam sempre de # no início da linha:
+# site = https://www.toptal.com/developers/gitignore
+# taskflow API = http://localhost:3000/
