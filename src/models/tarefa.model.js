@@ -1,55 +1,95 @@
 let tarefas = [
-    { id: 1, texto: 'Estudar Node.js',
-         prioridade: 'alta',
-          coluna: 'andamento' },
-{ id: 2, texto: 'Fazer exercícios',
-     prioridade: 'media',
-         coluna: 'afazer' },
+  {
+    id: 1,
+    texto: "Estudar Node.js",
+    prioridade: "alta",
+    coluna: "andamento",
+    usuarioId: 1,
+    projetoId: 1,
+    dataConclusao: null,
+  },{
+    id: 2,
+    texto: "Fazer exercícios",
+    prioridade: "media",
+    coluna: "afazer",
+    usuarioId: 2,
+    projetoId: 1,
+    dataConclusao: null,
+  },
 ];
-let proximoId = 1;
 
-  module.exports = {
-  listar: () => tarefas,
+let proximoId = 3;
 
-  listaPorColuna: (coluna) => tarefas.filter(t => t.coluna === coluna),
+function listar() {
+  return tarefas;
+}
 
-  buscarPorId(req, res) {
-    const id = parseInt(req.params.id);
-    const tarefa = tarefas.find(t => t.id === id);
-    if (!tarefa) return res.status(404).json({ erro: 'Tarefa não encontrada' });
-    res.json(tarefa);
-  },
+function buscar(id) {
+  return tarefas.find((tarefa) => tarefa.id === id);
+}
+function listarPorColuna(coluna) {
+  return tarefas.filter((tarefa) => tarefa.coluna === coluna);
+}
+function listarPorUsuario(usuarioId) {
+  return tarefas.filter(
+    (tarefa) => tarefa.usuarioId === usuarioId
+  );
+}
 
-  
-  criar(req, res) {
-    const { texto, prioridade, coluna } = req.body;
-    if (!texto) return res.status(400).json({ erro: 'Texto obrigatório' });
-    const nova = {
-      id: proximoId++,
-      texto,
-      prioridade: prioridade || 'media',
-      coluna: coluna || 'afazer'
-    };
-    tarefas.push(nova);
-    res.status(201).json(nova);
-  },
+function listarPorProjeto(projetoId) {
+  return tarefas.filter(
+    (tarefa) => tarefa.projetoId === projetoId
+  );
+}
 
-  atualizar(req, res) {
-    const id = parseInt(req.params.id);
-    const idx = tarefas.findIndex(t => t.id === id);
-    if (idx === -1) return res.status(404).json({ erro: 'Tarefa não encontrada' });
-    tarefas[idx] = { ...tarefas[idx], ...req.body, id };
-    res.json(tarefas[idx]);
-  },
+function adicionar(dados) {
+  const novaTarefa = {
+    id: proximoId++,
+    ...dados,
+  };
 
-  remover(req, res) {
-    const id = parseInt(req.params.id);
-    const idx = tarefas.findIndex(t => t.id === id);
-    if (idx === -1) return res.status(404).json({ erro: 'Tarefa não encontrada' });
-    const removida = tarefas.splice(idx, 1)[0];
-    res.json({ mensagem: 'Tarefa removida', tarefa: removida });
+  tarefas.push(novaTarefa);
+
+  return novaTarefa;
+}
+
+function atualizar(id, dados) {
+  const indice = tarefas.findIndex(
+    (tarefa) => tarefa.id === id
+  );
+
+  if (indice === -1) {
+    return null;
   }
+
+  tarefas[indice] = {
+    ...tarefas[indice],
+    ...dados,
+    id,
+  };
+
+  return tarefas[indice];
+}
+
+function remover(id) {
+  const indice = tarefas.findIndex(
+    (tarefa) => tarefa.id === id
+  );
+
+  if (indice === -1) {
+    return null;
+  }
+
+  return tarefas.splice(indice, 1)[0];
+}
+
+module.exports = {
+  listar,
+  buscar,
+  listarPorColuna,
+  listarPorUsuario,
+  listarPorProjeto,
+  adicionar,
+  atualizar,
+  remover,
 };
-
-
-
