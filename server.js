@@ -1,9 +1,15 @@
 const express = require("express");
+const logger = require('./src/middlewares/logger.middleware');
 const tarefasRoutes = require("./src/routes/tarefas.routes");
 const usuariosRoutes = require("./src/routes/usuarios.routes");
+const validarContentType = require('./src/middlewares/validarContentType.middleware');
 const projetosRoutes = require("./src/routes/projetos.routes");
 const app = express();
 const PORTA = 3000;
+
+app.use(logger);
+app.use(validarContentType);
+app.use(express.json());
 
 app.use(express.json());
 app.get("/", (req, res) => {

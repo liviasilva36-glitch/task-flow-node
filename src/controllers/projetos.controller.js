@@ -2,16 +2,16 @@ const tarefasModel = require("../models/tarefa.model");
 let projetos = [
   {
     id: 1,
-    nome: "Projeto Y",
-    descricao: "Descrição do projeto Y",
+    nome: "Projeto Ana",
+    descricao: "Descrição do projeto Ana",
   }, {
     id: 2,
-    nome: "Projeto X",
-    descricao: "Descrição do projeto X",
+    nome: "Projeto Livia",
+    descricao: "Descrição do projeto Livia",
   }, {
     id: 3,
-    nome: "Projeto Z",
-    descricao: "Descrição do projeto Z",
+    nome: "Projeto Batista",
+    descricao: "Descrição do projeto Batista",
   },
 ];
 
@@ -52,7 +52,7 @@ const projetosController = {
 
     if (!nome || !nome.trim()) {
       return res.status(400).json({
-        erro: "O nome do projeto é obrigatório",
+        erro: "O nome do projeto é obrigatório, e não pode ficar vazio",
       });
     }
 
@@ -77,10 +77,9 @@ const projetosController = {
     const projeto = projetos.find(
       (p) => p.id === id
     );
-
     if (!projeto) {
       return res.status(404).json({
-        erro: "Projeto não encontrado",
+        erro: "Projeto não encontrado, busque outro id ou crie um novo projeto",
       });
     }
 
