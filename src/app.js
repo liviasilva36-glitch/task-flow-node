@@ -4,6 +4,8 @@ const tarefasRoutes = require('./routes/tarefas.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
 const projetosRoutes = require('./routes/projetos.routes');
 
+const authRoutes = require('./routes/auth.routes');
+
 const app = express();
 app.use(express.json());
 
@@ -16,7 +18,7 @@ app.get('/', (req, res) => {
 app.use('/tarefas', tarefasRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/projetos', projetosRoutes);
-
+app.use('/auth', authRoutes);
 // Rota genérica para URLs não encontradas (Retorna 404)
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });

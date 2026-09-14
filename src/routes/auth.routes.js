@@ -10,10 +10,13 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ erro: 'Credenciais inválidas' });
   }
 
-  // Geração do token JWT com payload e a chave do .env
+  // Usa a variável de ambiente OU uma chave padrão
+  const secretKey = process.env.JWT_SECRET || 'sua_chave_secreta_padrao_123';
+
+  // Geração do token JWT
   const token = jwt.sign(
     { id: 1, nome: 'Ana', email },
-    process.env.JWT_SECRET,
+    secretKey,
     { expiresIn: '1h' }
   );
 
