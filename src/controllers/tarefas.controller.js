@@ -105,9 +105,10 @@ const tarefasController = {
       texto,
       prioridade = "media",
       coluna = "afazer",
-      usuarioId,
       projetoId,
     } = req.body;
+
+    const usuarioId = req.usuario?.id;
 
     if (!texto || !texto.trim()) {
       return res.status(400).json({

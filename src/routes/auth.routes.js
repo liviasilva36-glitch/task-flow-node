@@ -12,7 +12,7 @@ router.post('/login', (req, res) => {
 
   // Geração do token JWT com payload e a chave do .env
   const token = jwt.sign(
-    { id: 1, nome: 'Alice', email },
+    { id: 1, nome: 'Ana', email },
     process.env.JWT_SECRET,
     { expiresIn: '1h' }
   );
