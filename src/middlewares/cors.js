@@ -1,4 +1,8 @@
-function corsMiddleware(req, res, next) {
+const corsMiddlewares = require('./middlewares/cors');
+
+app.use(corsMiddlewares);
+
+function corsMiddlewares(req, res, next) {
 
 
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');

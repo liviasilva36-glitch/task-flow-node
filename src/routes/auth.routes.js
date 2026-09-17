@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
+const dotenv = require ('dotenv');
+dotenv.config();
 
 router.post('/login', (req, res) => {
   const { email, senha } = req.body;
@@ -12,15 +14,16 @@ router.post('/login', (req, res) => {
 
   // Usa a variável de ambiente OU uma chave padrão
   const secretKey = process.env.JWT_SECRET || 'sua_chave_secreta_padrao_123';
-
+  const usuario = { id: 1, nome: 'Ana', email };
+  
   // Geração do token JWT
   const token = jwt.sign(
-    { id: 1, nome: 'Ana', email },
+    usuario,
     secretKey,
     { expiresIn: '1h' }
   );
 
-  return res.json({ token });
+  return res.json({ token, usuario });
 });
 
 module.exports = router;

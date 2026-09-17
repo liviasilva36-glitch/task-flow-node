@@ -14,7 +14,7 @@ const projetosRoutes = require('./src/routes/projetos.routes');
 const app = express();
 const PORTA = process.env.PORTA || 3001;
 
-// Configuração do CORS
+// Configuração do CORS-----
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],

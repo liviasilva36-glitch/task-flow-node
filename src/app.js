@@ -3,7 +3,7 @@ const express = require('express');
 const tarefasRoutes = require('./routes/tarefas.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
 const projetosRoutes = require('./routes/projetos.routes');
-
+const cors = require ('./middlewares/cors');
 const authRoutes = require('./routes/auth.routes');
 
 const app = express();
@@ -19,6 +19,7 @@ app.use('/tarefas', tarefasRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/projetos', projetosRoutes);
 app.use('/auth', authRoutes);
+app.use(corsMiddlewares);
 // Rota genérica para URLs não encontradas (Retorna 404)
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });
@@ -28,3 +29,4 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
+
