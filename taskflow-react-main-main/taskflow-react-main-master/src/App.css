@@ -1,0 +1,638 @@
+/* ===========================
+   VARIÁVEIS
+=========================== */
+
+:root {
+  --accent: #8b5cf6;
+  --accent-light: #a78bfa;
+  --accent-blue: #06b6d4;
+
+  --accent-bg: rgba(139, 92, 246, 0.12);
+  --accent-border: rgba(139, 92, 246, 0.25);
+
+  --background: #0b1120;
+  --surface: rgba(17, 24, 39, 0.88);
+  --surface-light: rgba(30, 41, 59, 0.7);
+
+  --text: #94a3b8;
+  --text-h: #ffffff;
+
+  --border: rgba(139, 92, 246, 0.18);
+
+  --shadow:
+    0 20px 50px rgba(0, 0, 0, 0.3);
+
+  --shadow-hover:
+    0 25px 60px rgba(0, 0, 0, 0.45);
+}
+
+
+/* ===========================
+   RESET
+=========================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+
+  min-height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at 10% 10%,
+      rgba(139, 92, 246, 0.12),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(6, 182, 212, 0.08),
+      transparent 30%
+    ),
+    #0b1120;
+
+  color: var(--text);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+
+/* ===========================
+   CONTADOR
+=========================== */
+
+.counter {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 8px 14px;
+  margin-bottom: 24px;
+
+  color: var(--accent-light);
+
+  background:
+    rgba(139, 92, 246, 0.1);
+
+  border:
+    1px solid rgba(139, 92, 246, 0.2);
+
+  border-radius: 999px;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  box-shadow:
+    0 5px 20px rgba(139, 92, 246, 0.08);
+
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.counter:hover {
+  border-color: var(--accent);
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 25px rgba(139, 92, 246, 0.18);
+}
+
+.counter:focus-visible {
+  outline: 2px solid var(--accent);
+
+  outline-offset: 3px;
+}
+
+
+/* ===========================
+   HERO
+=========================== */
+
+.hero {
+  position: relative;
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  min-height: 220px;
+}
+
+.hero .base,
+.hero .framework,
+.hero .vite {
+  inset-inline: 0;
+
+  margin: 0 auto;
+}
+
+.hero .base {
+  position: relative;
+
+  width: 180px;
+
+  z-index: 1;
+
+  filter:
+    drop-shadow(
+      0 15px 30px rgba(0, 0, 0, 0.4)
+    );
+
+  animation:
+    flutuar 4s ease-in-out infinite;
+}
+
+.hero .framework,
+.hero .vite {
+  position: absolute;
+
+  transition:
+    transform 0.4s ease;
+}
+
+.hero .framework {
+  z-index: 2;
+
+  top: 34px;
+
+  height: 30px;
+
+  transform:
+    perspective(2000px)
+    rotateZ(300deg)
+    rotateX(44deg)
+    rotateY(39deg)
+    scale(1.4);
+
+  filter:
+    drop-shadow(
+      0 10px 20px rgba(139, 92, 246, 0.25)
+    );
+}
+
+.hero .vite {
+  z-index: 1;
+
+  top: 108px;
+
+  width: auto;
+  height: 28px;
+
+  transform:
+    perspective(2000px)
+    rotateZ(300deg)
+    rotateX(40deg)
+    rotateY(39deg)
+    scale(0.85);
+
+  filter:
+    drop-shadow(
+      0 10px 20px rgba(6, 182, 212, 0.2)
+    );
+}
+
+
+/* ===========================
+   ANIMAÇÃO HERO
+=========================== */
+
+@keyframes flutuar {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+
+/* ===========================
+   CENTRO
+=========================== */
+
+#center {
+  display: flex;
+
+  flex-direction: column;
+
+  flex-grow: 1;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 24px;
+
+  padding: 48px 24px;
+
+  text-align: center;
+}
+
+
+/* ===========================
+   PRÓXIMOS PASSOS
+=========================== */
+
+#next-steps {
+  position: relative;
+
+  display: flex;
+
+  width: min(100%, 1000px);
+
+  margin-top: 20px;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(139, 92, 246, 0.1),
+      transparent 35%
+    ),
+    var(--surface);
+
+  border:
+    1px solid var(--border);
+
+  border-radius: 20px;
+
+  box-shadow: var(--shadow);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+#next-steps:hover {
+  border-color:
+    rgba(139, 92, 246, 0.3);
+
+  box-shadow:
+    var(--shadow-hover);
+}
+
+
+/* linha colorida no topo */
+
+#next-steps::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 10%;
+
+  width: 80%;
+  height: 2px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #8b5cf6,
+      #06b6d4,
+      transparent
+    );
+}
+
+
+/* ===========================
+   BLOCOS
+=========================== */
+
+#next-steps > div {
+  flex: 1;
+
+  padding: 32px;
+
+  transition:
+    background 0.3s ease,
+    transform 0.3s ease;
+}
+
+#next-steps > div:hover {
+  background:
+    rgba(139, 92, 246, 0.05);
+}
+
+
+/* ===========================
+   ÍCONES
+=========================== */
+
+#next-steps .icon {
+  width: 24px;
+  height: 24px;
+
+  margin-bottom: 16px;
+
+  transition:
+    transform 0.3s ease;
+
+  filter:
+    drop-shadow(
+      0 5px 10px rgba(139, 92, 246, 0.25)
+    );
+}
+
+#next-steps > div:hover .icon {
+  transform:
+    scale(1.12)
+    rotate(-5deg);
+}
+
+
+/* ===========================
+   DOCUMENTAÇÃO
+=========================== */
+
+#docs {
+  border-right:
+    1px solid var(--border);
+}
+
+
+/* ===========================
+   LINKS
+=========================== */
+
+#next-steps ul {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  margin: 28px 0 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+#next-steps ul .logo {
+  height: 18px;
+}
+
+
+/* ===========================
+   BOTÕES / LINKS
+=========================== */
+
+#next-steps ul a {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  min-height: 42px;
+
+  padding: 8px 14px;
+
+  color: #cbd5e1;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  text-decoration: none;
+
+  background:
+    rgba(30, 41, 59, 0.65);
+
+  border:
+    1px solid rgba(71, 85, 105, 0.6);
+
+  border-radius: 12px;
+
+  transition:
+    transform 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+#next-steps ul a:hover {
+  color: #ffffff;
+
+  background:
+    rgba(139, 92, 246, 0.12);
+
+  border-color:
+    rgba(139, 92, 246, 0.4);
+
+  transform:
+    translateY(-3px);
+
+  box-shadow:
+    0 8px 25px rgba(139, 92, 246, 0.15);
+}
+
+#next-steps ul a:focus-visible {
+  outline: 2px solid var(--accent);
+
+  outline-offset: 3px;
+}
+
+#next-steps ul .button-icon {
+  width: 18px;
+  height: 18px;
+}
+
+
+/* ===========================
+   ESPAÇADOR
+=========================== */
+
+#spacer {
+  height: 80px;
+
+  border-top:
+    1px solid var(--border);
+}
+
+
+/* ===========================
+   DETALHE DA LINHA
+=========================== */
+
+.ticks {
+  position: relative;
+
+  width: 100%;
+}
+
+.ticks::before,
+.ticks::after {
+  content: "";
+
+  position: absolute;
+
+  top: -5px;
+
+  border: 5px solid transparent;
+}
+
+.ticks::before {
+  left: 0;
+
+  border-left-color:
+    rgba(139, 92, 246, 0.25);
+}
+
+.ticks::after {
+  right: 0;
+
+  border-right-color:
+    rgba(6, 182, 212, 0.25);
+}
+
+
+/* ===========================
+   LAYOUT PRINCIPAL
+=========================== */
+
+.app-layout {
+  display: flex;
+
+  min-height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(139, 92, 246, 0.08),
+      transparent 30%
+    ),
+    #0b1120;
+}
+
+.app-conteudo {
+  flex: 1;
+
+  min-width: 0;
+  min-height: 100vh;
+
+  margin-left: 240px;
+
+  padding: 32px;
+
+  transition:
+    margin-left 0.3s ease,
+    padding 0.3s ease;
+}
+
+
+/* ===========================
+   RESPONSIVIDADE
+=========================== */
+
+@media (max-width: 1024px) {
+
+  #center {
+    padding:
+      32px 20px 24px;
+
+    gap: 18px;
+  }
+
+  #next-steps {
+    flex-direction: column;
+
+    text-align: center;
+
+    border-radius: 16px;
+  }
+
+  #next-steps > div {
+    padding: 24px 20px;
+  }
+
+  #docs {
+    border-right: none;
+
+    border-bottom:
+      1px solid var(--border);
+  }
+
+  #next-steps ul {
+    justify-content: center;
+
+    margin-top: 20px;
+  }
+
+  #next-steps ul li {
+    flex: 1 1 calc(50% - 10px);
+  }
+
+  #next-steps ul a {
+    width: 100%;
+  }
+
+  #spacer {
+    height: 48px;
+  }
+
+  .app-conteudo {
+    margin-left: 0;
+
+    padding:
+      24px 20px;
+  }
+}
+
+
+/* ===========================
+   CELULAR
+=========================== */
+
+@media (max-width: 600px) {
+
+  .counter {
+    padding: 7px 12px;
+
+    font-size: 14px;
+  }
+
+  .hero {
+    min-height: 180px;
+  }
+
+  .hero .base {
+    width: 140px;
+  }
+
+  #next-steps ul li {
+    flex-basis: 100%;
+  }
+
+  .app-conteudo {
+    padding:
+      20px 16px;
+  }
+
+  #center {
+    padding:
+      24px 16px;
+  }
+}
