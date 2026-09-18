@@ -1,40 +1,65 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
+const express = require("express");
+const jwt = require("jsonwebtoken");
+
 const router = express.Router();
-const dotenv = require('dotenv');
 
-dotenv.config();
+const usuarioModel = require("../models/usuario.model");
 
-// Importe a lista de usuários cadastrados no seu controller
-// (Ajuste o caminho '../controllers/usuarios.controller' de acordo com sua estrutura)
-const { usuarios } = require('../controllers/usuarios.controller');
+router.post("/login", (req, res) => {
+  try {
+    const { email, senha } = req.body;
 
-router.post('/login', (req, res) => {
-  const { email, senha } = req.body;
+    // Verifica se os campos foram preenchidos
+    if (!email || !senha) {
+      return res.status(400).json({
+        erro: "Email e senha são obrigatórios",
+      });
+    }
 
-  // Busca se o e-mail e a senha existem na lista da TaskFlow
-  const usuarioEncontrado = usuarios.find(
-    (u) => u.email === email && u.senha === senha
-  );
+    // Procura o usuário no MODEL
+    const usuario = usuarioModel.autenticar(email, senha);
 
-  // Se não encontrar o usuário ou a senha estiver errada
-  if (!usuarioEncontrado) {
-    return res.status(401).json({ erro: 'Usuário ou senha incorretos' });
+    // Usuário ou senha incorretos
+    if (!usuario) {
+      return res.status(401).json({
+        erro: "Usuário ou senha incorretos",
+      });
+    }
+
+    // Chave usada para criar o token
+    const secretKey =
+      process.env.JWT_SECRET ||
+      "sua_chave_secreta_padrao_123";
+
+    // Dados que vão dentro do token
+    const payload = {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+    };
+
+    // Cria o token
+    const token = jwt.sign(
+      payload,
+      secretKey,
+      {
+        expiresIn: "1h",
+      }
+    );
+
+    // Resposta para o Front-end
+    return res.json({
+      token,
+      usuario: payload,
+    });
+
+  } catch (erro) {
+    console.error("ERRO NO LOGIN:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno no servidor",
+    });
   }
-
-  // Chave secreta para assinar o token
-  const secretKey = process.env.JWT_SECRET || 'sua_chave_secreta_padrao_123';
-
-  // Cria o token com as informações do usuário encontrado (removendo a senha por segurança)
-  const payload = {
-    id: usuarioEncontrado.id,
-    nome: usuarioEncontrado.nome,
-    email: usuarioEncontrado.email
-  };
-
-  const token = jwt.sign(payload, secretKey, { expiresIn: '1h' });
-
-  return res.json({ token, usuario: payload });
 });
 
 module.exports = router;
