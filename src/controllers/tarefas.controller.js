@@ -1,310 +1,272 @@
 const tarefasModel = require("../models/tarefa.model");
+
 const prioridadesValidas = ["baixa", "media", "alta"];
-const colunasValidas = [
-  "afazer",
-  "andamento",
-  "concluido",
-];
-
+const colunasValidas = ["afazer", "andamento", "concluido"];
 const LIMITE_ANDAMENTO = 5;
+
 const tarefasController = {
+  async listar(req, res) {
+    try {
+      const { coluna, usuarioId, projetoId } = req.query;
 
-  listar(req, res) {
-    const { coluna, usuarioId, projetoId } = req.query;
-    let resultado = tarefasModel.listar();
+      let resultado;
+      if (coluna) {
+        resultado = await tarefasModel.listarPorColuna(coluna);
+      } else if (usuarioId) {
+        resultado = await tarefasModel.listarPorUsuario(Number(usuarioId));
+      } else if (projetoId) {
+        resultado = await tarefasModel.listarPorProjeto(Number(projetoId));
+      } else {
+        resultado = await tarefasModel.listar();
+      }
 
-    if (coluna) {
-      resultado = resultado.filter(
-        (tarefa) => tarefa.coluna === coluna
-      );
+      res.json(resultado);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    if (usuarioId) {
-      resultado = resultado.filter(
-        (tarefa) =>
-          tarefa.usuarioId === Number(usuarioId)
-      );
-    }
-
-    if (projetoId) {
-      resultado = resultado.filter(
-        (tarefa) =>
-          tarefa.projetoId === Number(projetoId)
-      );
-    }
-
-    res.json(resultado);
   },
 
-  estatisticas(req, res) {
-    const { coluna } = req.query;
+  async estatisticas(req, res) {
+    try {
+      const { coluna } = req.query;
 
-    const base = coluna
-      ? tarefasModel.listarPorColuna(coluna)
-      : tarefasModel.listar();
+      const base = coluna
+        ? await tarefasModel.listarPorColuna(coluna)
+        : await tarefasModel.listar();
 
-    const porColuna = {
-      afazer: base.filter(
-        (t) => t.coluna === "afazer"
-      ).length,
+      const porColuna = {
+        afazer: base.filter((t) => t.coluna === "afazer").length,
+        andamento: base.filter((t) => t.coluna === "andamento").length,
+        concluido: base.filter((t) => t.coluna === "concluido").length,
+      };
 
-      andamento: base.filter(
-        (t) => t.coluna === "andamento"
-      ).length,
-
-      concluido: base.filter(
-        (t) => t.coluna === "concluido"
-      ).length,
-    };
-
-    res.json({
-      total: base.length,
-      porColuna,
-    });
+      res.json({
+        total: base.length,
+        porColuna,
+      });
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
   },
 
-  resumo(req, res) {
-    const tarefas = tarefasModel.listar();
-    const total = tarefas.length;
-    const concluido = tarefas.filter(
-      (t) => t.coluna === "concluido"
-    ).length;
+  async resumo(req, res) {
+    try {
+      const tarefas = await tarefasModel.listar();
+      const total = tarefas.length;
+      const concluido = tarefas.filter((t) => t.coluna === "concluido").length;
+      const andamento = tarefas.filter((t) => t.coluna === "andamento").length;
+      const afazer = tarefas.filter((t) => t.coluna === "afazer").length;
 
-    const andamento = tarefas.filter(
-      (t) => t.coluna === "andamento"
-    ).length;
-
-    const afazer = tarefas.filter(
-      (t) => t.coluna === "afazer"
-    ).length;
-
-    res.json({
-      total,
-      concluido,
-      andamento,
-      afazer,
-      mensagem: `Você tem ${total} tarefas. ${concluido} concluídas, ${andamento} em andamento e ${afazer} a fazer.`,
-    });
+      res.json({
+        total,
+        concluido,
+        andamento,
+        afazer,
+        mensagem: `Você tem ${total} tarefas. ${concluido} concluídas, ${andamento} em andamento e ${afazer} a fazer.`,
+      });
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
   },
 
-  buscarPorId(req, res) {
-    const id = Number(req.params.id);
-    const tarefa = tarefasModel.buscar(id);
+  async buscarPorId(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const tarefa = await tarefasModel.buscar(id);
 
-    if (!tarefa) {
-      return res.status(404).json({
-        erro: "Tarefa não encontrada,por favor verifique o ID informado",
-      });
-    }
-
-    res.json(tarefa);
-  },
-
-  criar(req, res) {
-    const {
-      texto,
-      prioridade = "media",
-      coluna = "afazer",
-      projetoId,
-    } = req.body;
-
-    const usuarioId = req.usuario?.id;
-
-    if (!texto || !texto.trim()) {
-      return res.status(400).json({
-        erro: "Texto obrigatório e não pode ser vazio , tenha certeza que digitou algo",
-      });
-    }
-
-    if (!usuarioId) {
-      return res.status(400).json({
-        erro: "usuarioId é obrigatório, uma tarefa precisa esta associada a um usuário",
-      });
-    }
-
-    if (!prioridadesValidas.includes(prioridade)) {
-      return res.status(400).json({
-        erro: "Prioridade inválida",
-        valoresPermitidos: prioridadesValidas,
-      });
-    }
-
-    if (!colunasValidas.includes(coluna)) {
-      return res.status(400).json({
-        erro: "Coluna inválida, tente novamente com uma das colunas válidas",
-        valoresPermitidos: colunasValidas,
-      });
-    }
-
-    if (coluna === "andamento") {
-      const andamento = tarefasModel.listarPorColuna(
-        "andamento"
-      );
-
-      if (andamento.length >= LIMITE_ANDAMENTO) {
-        return res.status(409).json({
-          erro: `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`,
+      if (!tarefa) {
+        return res.status(404).json({
+          erro: "Tarefa não encontrada, por favor verifique o ID informado",
         });
       }
+
+      res.json(tarefa);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    const novaTarefa = tarefasModel.adicionar({
-      texto: texto.trim(),
-      prioridade,
-      coluna,
-      usuarioId: Number(usuarioId),
-      projetoId: projetoId
-        ? Number(projetoId)
-        : null,
-      dataConclusao:
-        coluna === "concluido"
-          ? new Date().toISOString()
-          : null,
-    });
-
-    res.status(201).json(novaTarefa);
   },
 
-  atualizar(req, res) {
-    const id = Number(req.params.id);
+  async criar(req, res) {
+    try {
+      const {
+        texto,
+        prioridade = "media",
+        coluna = "afazer",
+        projetoId,
+      } = req.body;
 
-    const tarefa = tarefasModel.buscar(id);
+      const usuarioId = req.usuario?.id || req.body.usuarioId;
 
-    if (!tarefa) {
-      return res.status(404).json({
-        erro: "Tarefa não encontrada",
-      });
-    }
-
-    const {
-      texto,
-      prioridade,
-      coluna,
-      usuarioId,
-      projetoId,
-    } = req.body;
-
-    // VALIDAR PRIORIDADE
-    if (
-      prioridade !== undefined &&
-      !prioridadesValidas.includes(prioridade)
-    ) {
-      return res.status(400).json({
-        erro: "Prioridade inválida",
-        valoresPermitidos: prioridadesValidas,
-      });
-    }
-
-    if (
-      coluna !== undefined &&
-      !colunasValidas.includes(coluna)
-    ) {
-      return res.status(400).json({
-        erro: "Coluna inválida",
-        valoresPermitidos: colunasValidas,
-      });
-    }
-
-    if (
-      coluna === "andamento" &&
-      tarefa.coluna !== "andamento"
-    ) {
-      const andamento =
-        tarefasModel.listarPorColuna("andamento");
-
-      if (andamento.length >= LIMITE_ANDAMENTO) {
-        return res.status(409).json({
-          erro: `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`,
+      if (!texto || !texto.trim()) {
+        return res.status(400).json({
+          erro: "Texto obrigatório e não pode ser vazio, tenha certeza que digitou algo",
         });
       }
-    }
 
-    const dadosAtualizados = {
-      texto: texto ?? tarefa.texto,
-      prioridade:
-        prioridade ?? tarefa.prioridade,
-      coluna: coluna ?? tarefa.coluna,
-      usuarioId:
-        usuarioId !== undefined
-          ? Number(usuarioId)
-          : tarefa.usuarioId,
-      projetoId:
-        projetoId !== undefined
-          ? Number(projetoId)
-          : tarefa.projetoId,
-    };
+      if (!usuarioId) {
+        return res.status(400).json({
+          erro: "usuarioId é obrigatório, uma tarefa precisa estar associada a um usuário",
+        });
+      }
 
-    if (
-      coluna === "concluido" &&
-      tarefa.coluna !== "concluido"
-    ) {
-      dadosAtualizados.dataConclusao =
-        new Date().toISOString();
-    }
+      if (!prioridadesValidas.includes(prioridade)) {
+        return res.status(400).json({
+          erro: "Prioridade inválida",
+          valoresPermitidos: prioridadesValidas,
+        });
+      }
 
-    if (
-      coluna &&
-      coluna !== "concluido" &&
-      tarefa.coluna === "concluido"
-    ) {
-      dadosAtualizados.dataConclusao = null;
-    }
+      if (!colunasValidas.includes(coluna)) {
+        return res.status(400).json({
+          erro: "Coluna inválida, tente novamente com uma das colunas válidas",
+          valoresPermitidos: colunasValidas,
+        });
+      }
 
-    const atualizada = tarefasModel.atualizar(
-      id,
-      dadosAtualizados
-    );
+      if (coluna === "andamento") {
+        const andamento = await tarefasModel.listarPorColuna("andamento");
 
-    res.json(atualizada);
-  },
+        if (andamento.length >= LIMITE_ANDAMENTO) {
+          return res.status(409).json({
+            erro: `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`,
+          });
+        }
+      }
 
-  remover(req, res) {
-    const id = Number(req.params.id);
-
-    const removida = tarefasModel.remover(id);
-
-    if (!removida) {
-      return res.status(404).json({
-        erro: "Tarefa não encontrada para remoçao, verifique o Id informado",
+      const novaTarefa = await tarefasModel.adicionar({
+        texto: texto.trim(),
+        prioridade,
+        coluna,
+        usuarioId: Number(usuarioId),
+        projetoId: projetoId ? Number(projetoId) : null,
+        dataConclusao:
+          coluna === "concluido" ? new Date().toISOString() : null,
       });
-    }
 
-    res.json({
-      mensagem: "Tarefa removida com sucesso",
-      tarefa: removida,
-    });
+      res.status(201).json(novaTarefa);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
   },
 
-  rankingPorUsuario(req, res) {
-    const tarefas = tarefasModel.listar();
+  async atualizar(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const tarefa = await tarefasModel.buscar(id);
 
-    const ranking = {};
-
-    tarefas.forEach((tarefa) => {
-      const usuarioId = tarefa.usuarioId;
-
-      if (!ranking[usuarioId]) {
-        ranking[usuarioId] = {
-          usuarioId,
-          total: 0,
-          concluidas: 0,
-        };
+      if (!tarefa) {
+        return res.status(404).json({
+          erro: "Tarefa não encontrada",
+        });
       }
 
-      ranking[usuarioId].total++;
+      const { texto, prioridade, coluna, usuarioId, projetoId } = req.body;
 
-      if (tarefa.coluna === "concluido") {
-        ranking[usuarioId].concluidas++;
+      if (
+        prioridade !== undefined &&
+        !prioridadesValidas.includes(prioridade)
+      ) {
+        return res.status(400).json({
+          erro: "Prioridade inválida",
+          valoresPermitidos: prioridadesValidas,
+        });
       }
-    });
 
-    const resultado = Object.values(ranking)
-      .sort(
+      if (coluna !== undefined && !colunasValidas.includes(coluna)) {
+        return res.status(400).json({
+          erro: "Coluna inválida",
+          valoresPermitidos: colunasValidas,
+        });
+      }
+
+      if (coluna === "andamento" && tarefa.coluna !== "andamento") {
+        const andamento = await tarefasModel.listarPorColuna("andamento");
+
+        if (andamento.length >= LIMITE_ANDAMENTO) {
+          return res.status(409).json({
+            erro: `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`,
+          });
+        }
+      }
+
+      const dadosAtualizados = {
+        texto: texto ?? tarefa.texto,
+        prioridade: prioridade ?? tarefa.prioridade,
+        coluna: coluna ?? tarefa.coluna,
+        usuarioId:
+          usuarioId !== undefined ? Number(usuarioId) : tarefa.usuarioId || tarefa.usuario_id,
+        projetoId:
+          projetoId !== undefined ? Number(projetoId) : tarefa.projetoId || tarefa.projeto_id,
+      };
+
+      if (coluna === "concluido" && tarefa.coluna !== "concluido") {
+        dadosAtualizados.dataConclusao = new Date().toISOString();
+      }
+
+      if (coluna && coluna !== "concluido" && tarefa.coluna === "concluido") {
+        dadosAtualizados.dataConclusao = null;
+      }
+
+      const atualizada = await tarefasModel.atualizar(id, dadosAtualizados);
+
+      res.json(atualizada);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
+  },
+
+  async remover(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const removida = await tarefasModel.remover(id);
+
+      if (!removida) {
+        return res.status(404).json({
+          erro: "Tarefa não encontrada para remoção, verifique o ID informado",
+        });
+      }
+
+      res.json({
+        mensagem: "Tarefa removida com sucesso",
+        tarefa: removida,
+      });
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
+  },
+
+  async rankingPorUsuario(req, res) {
+    try {
+      const tarefas = await tarefasModel.listar();
+      const ranking = {};
+
+      tarefas.forEach((tarefa) => {
+        const usuarioId = tarefa.usuarioId || tarefa.usuario_id;
+
+        if (!ranking[usuarioId]) {
+          ranking[usuarioId] = {
+            usuarioId,
+            total: 0,
+            concluidas: 0,
+          };
+        }
+
+        ranking[usuarioId].total++;
+
+        if (tarefa.coluna === "concluido") {
+          ranking[usuarioId].concluidas++;
+        }
+      });
+
+      const resultado = Object.values(ranking).sort(
         (a, b) => b.concluidas - a.concluidas
       );
 
-    res.json(resultado);
+      res.json(resultado);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
   },
 };
 
-module.exports = tarefasController;
+module.exports = tarefasController; 

@@ -13,7 +13,7 @@ function autenticar(req, res, next) {
     }
 
     const token = partes[1];
-    const secretkey = process.env.JWT_SECRET || 'sua_chave_secreta_padrao_123';
+    const secretkey = process.env.JWT_SECRET;
 
     try {
         const decodificado = jwt.verify(token, secretkey);

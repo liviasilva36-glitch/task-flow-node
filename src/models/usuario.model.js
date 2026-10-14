@@ -1,98 +1,76 @@
-let usuarios = [
-  {
-    id: 1,
-    nome: "admin",
-    email: "admin@taskflow.com",
-    senha: "1234",
-  },
-  {
-    id: 2,
-    nome: "leskinha",
-    email: "leskinha@taskflow.com",
-    senha: "5678",
-  },
-  {
-    id: 3,
-    nome: "alan",
-    email: "alan@taskflow.com",
-    senha: "1357",
-  },
-];
-
-let proximoId = 4;
+const pool = require("../database/db");
 
 const usuarioModel = {
-
-  listar() {
-    return usuarios;
-  },
-
-  buscarPorId(id) {
-    return usuarios.find(
-      (usuario) => usuario.id === id
+  async listar() {
+    const result = await pool.query(
+      "SELECT id, nome, email FROM usuarios ORDER BY id ASC"
     );
+    return result.rows;
   },
 
-  buscarPorEmail(email) {
-    return usuarios.find(
-      (usuario) => usuario.email === email
+  async buscarPorId(id) {
+    const result = await pool.query(
+      "SELECT id, nome, email FROM usuarios WHERE id = $1",
+      [id]
     );
+    return result.rows[0] || null;
   },
 
-  autenticar(email, senha) {
-    return usuarios.find(
-      (usuario) =>
-        usuario.email === email &&
-        usuario.senha === senha
+  async buscarPorEmail(email) {
+    const result = await pool.query(
+      "SELECT * FROM usuarios WHERE email = $1",
+      [email]
     );
+    return result.rows[0] || null;
   },
 
-  criar(nome, email, senha) {
-
-    const novoUsuario = {
-      id: proximoId++,
-      nome,
-      email,
-      senha,
-    };
-
-    usuarios.push(novoUsuario);
-
-    return novoUsuario;
-  },
-
-  atualizar(id, dados) {
-
-    const indice = usuarios.findIndex(
-      (usuario) => usuario.id === id
+  async autenticar(email, senha) {
+    const result = await pool.query(
+      "SELECT id, nome, email FROM usuarios WHERE email = $1 AND senha = $2",
+      [email, senha]
     );
+    return result.rows[0] || null;
+  },
 
-    if (indice === -1) {
+  async criar(nome, email, senha) {
+    const query = `
+      INSERT INTO usuarios (nome, email, senha)
+      VALUES ($1, $2, $3)
+      RETURNING id, nome, email
+    `;
+    const result = await pool.query(query, [nome, email, senha]);
+    return result.rows[0];
+  },
+
+  async atualizar(id, dados) {
+    const usuarioAtual = await this.buscarPorId(id);
+    if (!usuarioAtual) {
       return null;
     }
 
-    usuarios[indice] = {
-      ...usuarios[indice],
-      ...dados,
-      id,
-    };
+    const nome = dados.nome !== undefined ? dados.nome : usuarioAtual.nome;
+    const email = dados.email !== undefined ? dados.email : usuarioAtual.email;
+    const senha = dados.senha !== undefined ? dados.senha : usuarioAtual.senha;
 
-    return usuarios[indice];
+    const query = `
+      UPDATE usuarios
+      SET nome = $1, email = $2, senha = COALESCE($3, senha)
+      WHERE id = $4
+      RETURNING id, nome, email
+    `;
+
+    const result = await pool.query(query, [nome, email, senha, id]);
+    return result.rows[0];
   },
 
-  remover(id) {
-
-    const usuario = this.buscarPorId(id);
-
-    if (!usuario) {
-      return null;
-    }
-
-    usuarios = usuarios.filter(
-      (usuario) => usuario.id !== id
-    );
-
-    return usuario;
+  async remover(id) {
+    const query = `
+      DELETE FROM usuarios 
+      WHERE id = $1 
+      RETURNING id, nome, email
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
   },
 };
 

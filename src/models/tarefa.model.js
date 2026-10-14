@@ -1,86 +1,128 @@
-let tarefas = [
-  {
-    id: 1,
-    texto: "Estudar Node.js",
-    prioridade: "alta",
-    coluna: "andamento",
-    usuarioId: 1,
-    projetoId: 1,
-    dataConclusao: null,
-  },{
-    id: 2,
-    texto: "Fazer exercícios",
-    prioridade: "media",
-    coluna: "afazer",
-    usuarioId: 2,
-    projetoId: 1,
-    dataConclusao: null,
-  },
-];
+const pool = require("../database/db");
 
-let proximoId = 3;
+// Mapeamento de português (API) para inglês (Banco Neon)
+const paraBanco = {
+  afazer: "todo",
+  andamento: "doing",
+  concluido: "done",
+};
 
-function listar() {
-  return tarefas;
-}
+// Mapeamento de inglês (Banco Neon) para português (API)
+const paraAPI = {
+  todo: "afazer",
+  doing: "andamento",
+  done: "concluido",
+};
 
-function buscar(id) {
-  return tarefas.find((tarefa) => tarefa.id === id);
-}
-function listarPorColuna(coluna) {
-  return tarefas.filter((tarefa) => tarefa.coluna === coluna);
-}
-function listarPorUsuario(usuarioId) {
-  return tarefas.filter(
-    (tarefa) => tarefa.usuarioId === usuarioId
-  );
-}
-
-function listarPorProjeto(projetoId) {
-  return tarefas.filter(
-    (tarefa) => tarefa.projetoId === projetoId
-  );
-}
-
-function adicionar(dados) {
-  const novaTarefa = {
-    id: proximoId++,
-    ...dados,
+// Função auxiliar para formatar a resposta para a API
+function formatarTarefa(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    coluna: paraAPI[row.coluna] || row.coluna,
+    usuarioId: row.usuario_id,
+    projetoId: row.projeto_id,
+    dataConclusao: row.data_conclusao,
   };
-
-  tarefas.push(novaTarefa);
-
-  return novaTarefa;
 }
 
-function atualizar(id, dados) {
-  const indice = tarefas.findIndex(
-    (tarefa) => tarefa.id === id
-  );
+async function listar() {
+  const result = await pool.query("SELECT * FROM tarefas ORDER BY id ASC");
+  return result.rows.map(formatarTarefa);
+}
 
-  if (indice === -1) {
+async function buscar(id) {
+  const result = await pool.query("SELECT * FROM tarefas WHERE id = $1", [id]);
+  return formatarTarefa(result.rows[0]);
+}
+
+async function listarPorColuna(coluna) {
+  const colunaDb = paraBanco[coluna] || coluna;
+  const result = await pool.query("SELECT * FROM tarefas WHERE coluna = $1", [colunaDb]);
+  return result.rows.map(formatarTarefa);
+}
+
+async function listarPorUsuario(usuarioId) {
+  const result = await pool.query("SELECT * FROM tarefas WHERE usuario_id = $1", [usuarioId]);
+  return result.rows.map(formatarTarefa);
+}
+
+async function listarPorProjeto(projetoId) {
+  const result = await pool.query("SELECT * FROM tarefas WHERE projeto_id = $1", [projetoId]);
+  return result.rows.map(formatarTarefa);
+}
+
+async function adicionar(dados) {
+  const { texto, coluna, usuarioId, projetoId, dataConclusao } = dados;
+
+  // Converte "afazer" -> "todo", etc.
+  const colunaDb = paraBanco[coluna] || "todo";
+
+  const query = `
+    INSERT INTO tarefas (texto, coluna, usuario_id, projeto_id, data_conclusao)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *
+  `;
+
+  const values = [
+    texto,
+    colunaDb,
+    usuarioId,
+    projetoId,
+    dataConclusao || null,
+  ];
+
+  const result = await pool.query(query, values);
+  return formatarTarefa(result.rows[0]);
+}
+
+async function atualizar(id, dados) {
+  const tarefaAtual = await buscar(id);
+  if (!tarefaAtual) {
     return null;
   }
 
-  tarefas[indice] = {
-    ...tarefas[indice],
-    ...dados,
+  const texto = dados.texto !== undefined ? dados.texto : tarefaAtual.texto;
+  const coluna = dados.coluna !== undefined ? dados.coluna : tarefaAtual.coluna;
+  const usuarioId = dados.usuarioId !== undefined ? dados.usuarioId : tarefaAtual.usuarioId;
+  const projetoId = dados.projetoId !== undefined ? dados.projetoId : tarefaAtual.projetoId;
+  const dataConclusao = dados.dataConclusao !== undefined ? dados.dataConclusao : tarefaAtual.dataConclusao;
+
+  const colunaDb = paraBanco[coluna] || coluna;
+
+  const query = `
+    UPDATE tarefas
+    SET texto = $1,
+        coluna = $2,
+        usuario_id = $3,
+        projeto_id = $4,
+        data_conclusao = $5
+    WHERE id = $6
+    RETURNING *
+  `;
+
+  const values = [
+    texto,
+    colunaDb,
+    usuarioId,
+    projetoId,
+    dataConclusao,
     id,
-  };
+  ];
 
-  return tarefas[indice];
+  const result = await pool.query(query, values);
+  return formatarTarefa(result.rows[0]);
 }
 
-function remover(id) {
-  const indice = tarefas.findIndex(
-    (tarefa) => tarefa.id === id
-  );
+async function remover(id) {
+  const query = `
+    DELETE FROM tarefas 
+    WHERE id = $1 
+    RETURNING *
+  `;
 
-  if (indice === -1) {
-    return null;
-  }
-
-  return tarefas.splice(indice, 1)[0];
+  const result = await pool.query(query, [id]);
+  return formatarTarefa(result.rows[0]);
 }
 
 module.exports = {

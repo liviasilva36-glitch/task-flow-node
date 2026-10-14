@@ -5,7 +5,7 @@ const cors = require("cors");
 
 const logger = require("./src/middlewares/logger");
 const validarContentType = require("./src/middlewares/validarContentType");
-
+const pool = require("./src/database/db");
 const authRoutes = require("./src/routes/auth.routes");
 const tarefasRoutes = require("./src/routes/tarefas.routes");
 const usuariosRoutes = require("./src/routes/usuarios.routes");
@@ -15,17 +15,30 @@ const app = express();
 
 const PORTA = process.env.PORTA || 3001;
 
-
 // ===============================
+
+pool.query("SELECT NOW()", (err, res) => {
+  if (err) {
+    console.error("Erro ao conectar ao banco de dados:", err);
+  } else {
+    console.log("Conexão com o banco de dados estabelecida com sucesso!");
+     console.log("Hora/Data ao conectar:", res.rows[0].now);
+  }
+});
+
+
 // CORS
 // ===============================
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://task-flow-frontend-teal.vercel.app"
+];
+
 app.use(
   cors({
-    origin:
-      process.env.CORS_ORIGIN ||
-      "http://localhost:5173",
-
+    origin: process.env.CORS_ORIGIN || 'https://localhost:5173',
+     
     methods: [
       "GET",
       "POST",
@@ -39,11 +52,10 @@ app.use(
       "Authorization"
     ],
 
+    credentials: true,
     maxAge: 86400
   })
 );
-
-
 // ===============================
 // MIDDLEWARES
 // ===============================

@@ -27,9 +27,7 @@ router.post("/login", (req, res) => {
     }
 
     // Chave usada para criar o token
-    const secretKey =
-      process.env.JWT_SECRET ||
-      "sua_chave_secreta_padrao_123";
+    const secretKey = process.env.JWT_SECRET;
 
     // Dados que vão dentro do token
     const payload = {

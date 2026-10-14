@@ -1,192 +1,156 @@
+const projetoModel = require("../models/projeto.model");
 const tarefasModel = require("../models/tarefa.model");
-let projetos = [
-  {
-    id: 1,
-    nome: "Projeto Ana",
-    descricao: "Descrição do projeto Ana",
-  }, {
-    id: 2,
-    nome: "Projeto Livia",
-    descricao: "Descrição do projeto Livia",
-  }, {
-    id: 3,
-    nome: "Projeto Batista",
-    descricao: "Descrição do projeto Batista",
-  },
-];
 
-let proximoProjeto = 4;
 const projetosController = {
-
-  listarProjetos(req, res) {
-    res.json(projetos);
+  async listarProjetos(req, res) {
+    try {
+      const projetos = await projetoModel.listar();
+      res.json(projetos);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
+    }
   },
 
+  async buscarProjetosId(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const projeto = await projetoModel.buscarPorId(id);
 
+      if (!projeto) {
+        return res.status(404).json({
+          erro: "Projeto não encontrado",
+        });
+      }
 
-
-
-
-  buscarProjetosId(req, res) {
-    const id = Number(req.params.id);
-    const projeto = projetos.find(
-      (p) => p.id === id
-    );
-
-    if (!projeto) {
-      return res.status(404).json({
-        erro: "Projeto não encontrado",
-      });
+      res.json(projeto);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    res.json(projeto);
   },
 
+  async criarProjetos(req, res) {
+    try {
+      const { nome, descricao } = req.body;
 
+      if (!nome || !nome.trim()) {
+        return res.status(400).json({
+          erro: "O nome do projeto é obrigatório, e não pode ficar vazio",
+        });
+      }
 
-
-
-
-  criarProjetos(req, res) {
-    const { nome, descricao } = req.body;
-
-    if (!nome || !nome.trim()) {
-      return res.status(400).json({
-        erro: "O nome do projeto é obrigatório, e não pode ficar vazio",
+      const novoProjeto = await projetoModel.criar({
+        nome: nome.trim(),
+        descricao: descricao || "",
       });
+
+      res.status(201).json(novoProjeto);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    const novoProjeto = {
-      id: proximoProjeto++,
-      nome: nome.trim(),
-      descricao: descricao || "",
-    };
-
-    projetos.push(novoProjeto);
-
-    res.status(201).json(novoProjeto);
   },
 
+  async atualizarProjetos(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const projetoExistente = await projetoModel.buscarPorId(id);
 
+      if (!projetoExistente) {
+        return res.status(404).json({
+          erro: "Projeto não encontrado, busque outro id ou crie um novo projeto",
+        });
+      }
 
+      const { nome, descricao } = req.body;
 
-
-  atualizarProjetos(req, res) {
-    const id = Number(req.params.id);
-
-    const projeto = projetos.find(
-      (p) => p.id === id
-    );
-    if (!projeto) {
-      return res.status(404).json({
-        erro: "Projeto não encontrado, busque outro id ou crie um novo projeto",
-      });
-    }
-
-    const { nome, descricao } = req.body;
-
-    if (nome !== undefined) {
-      if (!nome.trim()) {
+      if (nome !== undefined && !nome.trim()) {
         return res.status(400).json({
           erro: "O nome do projeto não pode ficar vazio",
         });
       }
 
-      projeto.nome = nome.trim();
-    }
+      const projetoAtualizado = await projetoModel.atualizar(id, {
+        nome: nome !== undefined ? nome.trim() : projetoExistente.nome,
+        descricao: descricao !== undefined ? descricao : projetoExistente.descricao,
+      });
 
-    if (descricao !== undefined) {
-      projeto.descricao = descricao;
+      res.json(projetoAtualizado);
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    res.json(projeto);
   },
 
+  async removerProjetos(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const projetoExistente = await projetoModel.buscarPorId(id);
 
+      if (!projetoExistente) {
+        return res.status(404).json({
+          erro: "Projeto não encontrado",
+        });
+      }
 
+      const tarefasDoProjeto = await tarefasModel.listarPorProjeto(id);
 
+      if (tarefasDoProjeto.length > 0) {
+        return res.status(409).json({
+          erro: "Não é possível remover o projeto porque ele possui tarefas.",
+          quantidadeTarefas: tarefasDoProjeto.length,
+        });
+      }
 
-  removerProjetos(req, res) {
-    const id = Number(req.params.id);
+      const projetoRemovido = await projetoModel.remover(id);
 
-    const indice = projetos.findIndex(
-      (p) => p.id === id
-    );
-
-    if (indice === -1) {
-      return res.status(404).json({
-        erro: "Projeto não encontrado",
+      res.json({
+        mensagem: "Projeto removido com sucesso",
+        projeto: projetoRemovido,
       });
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    const tarefasDoProjeto =
-      tarefasModel.listarPorProjeto(id);
-
-    if (tarefasDoProjeto.length > 0) {
-      return res.status(409).json({
-        erro:
-          "Não é possível remover o projeto porque ele possui tarefas.",
-        quantidadeTarefas:
-          tarefasDoProjeto.length,
-      });
-    }
-
-    const projetoRemovido =
-      projetos.splice(indice, 1);
-
-    res.json({
-      mensagem: "Projeto removido com sucesso",
-      projeto: projetoRemovido[0],
-    });
   },
 
+  async resumoProjeto(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const projeto = await projetoModel.buscarPorId(id);
 
+      if (!projeto) {
+        return res.status(404).json({
+          erro: "Projeto não encontrado",
+        });
+      }
 
+      const tarefas = await tarefasModel.listarPorProjeto(id);
 
+      const afazer = tarefas.filter(
+        (tarefa) => tarefa.coluna === "afazer"
+      ).length;
 
+      const andamento = tarefas.filter(
+        (tarefa) => tarefa.coluna === "andamento"
+      ).length;
 
-  resumoProjeto(req, res) {
-    const id = Number(req.params.id);
+      const concluido = tarefas.filter(
+        (tarefa) => tarefa.coluna === "concluido"
+      ).length;
 
-
-    const projeto = projetos.find(
-      (p) => p.id === id
-    );
-    if (!projeto) {
-      return res.status(404).json({
-        erro: "Projeto não encontrado",
+      res.json({
+        projeto: {
+          id: projeto.id,
+          nome: projeto.nome,
+          descricao: projeto.descricao,
+        },
+        tarefas: {
+          total: tarefas.length,
+          afazer,
+          andamento,
+          concluido,
+        },
       });
+    } catch (error) {
+      res.status(500).json({ erro: error.message });
     }
-
-    const tarefas =
-      tarefasModel.listarPorProjeto(id);
-
-    const afazer = tarefas.filter(
-      (tarefa) => tarefa.coluna === "afazer"
-    ).length;
-
-    const andamento = tarefas.filter(
-      (tarefa) => tarefa.coluna === "andamento"
-    ).length;
-
-    const concluido = tarefas.filter(
-      (tarefa) => tarefa.coluna === "concluido"
-    ).length;
-
-    res.json({
-      projeto: {
-        id: projeto.id,
-        nome: projeto.nome,
-        descricao: projeto.descricao,
-      },
-
-      tarefas: {
-        total: tarefas.length,
-        afazer,
-        andamento,
-        concluido,
-      },
-    });
   },
 };
 
