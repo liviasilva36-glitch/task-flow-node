@@ -1,7 +1,10 @@
-function criarErro(status, mensagem) {
-    const erro = new Error(mensagem);
-    erro.status = status;
-    return erro;
+function criarErro(status, mensagem, detalhes = null) {
+  const erro = new Error(mensagem);
+  erro.status = status;
+  if (detalhes) {
+    erro.detalhes = detalhes;
+  }
+  return erro;
 }
 
 module.exports = criarErro;

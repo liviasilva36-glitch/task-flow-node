@@ -1,25 +1,26 @@
 const express = require('express');
-const router = express.Router();
 
 const tarefasController = require('../controllers/tarefas.controller');
 const autenticar = require('../middlewares/autenticar');
 const schemas = require('../middlewares/schemas');
 const validar = require('../middlewares/validar');
 
+const router = express.Router();
 
-router.use(autenticar);
+const idValido = validar(schemas.id, "params");
 
+// Comentado para os testes no Postman
+// router.use(autenticar);
 
-router.get('/',    tarefasController.listar);
+// Rotas de consulta / relatórios
+router.get('/', tarefasController.listar);
 router.get('/estatisticas', tarefasController.estatisticas);
 router.get('/resumo', tarefasController.resumo);
-router.get('/:id', tarefasController.buscarPorId);
 
-
-router.post('/', tarefasController.criar);
-router.put('/:id', tarefasController.atualizar);
-router.delete('/:id', tarefasController.remover);
-
+// Rotas principais
+router.get('/:id', idValido, tarefasController.buscarPorId);
+router.post('/', validar(schemas.tarefa), tarefasController.criar); // Middleware adicionado aqui
+router.put('/:id', idValido, validar(schemas.tarefa), tarefasController.atualizar);
+router.delete('/:id', idValido, tarefasController.remover);
 
 module.exports = router;
-

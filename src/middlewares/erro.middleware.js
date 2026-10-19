@@ -1,19 +1,17 @@
+function tratarErros(err, req, res, next) {
+  // Imprime o erro completo no terminal para identificarmos a falha
+  console.error("ERRO CAPTURADO:", err);
 
-function tratarErros(erro, req, res, next) {
+  const status = err.status || 500;
+  const mensagem = err.message || "Erro interno do servidor";
+  const detalhes = err.detalhes || null;
 
-    const status = erro.status || 500;
-
-
-    console.error('[ERRO]', req.method, req.url, erro.message);
-
-    const mensagem = status === 500
-
-        ? 'Erro interno no servidor'
-
-        : erro.message;
-
-    res.status(status).json({ erro: { mensagem } });
-
+  res.status(status).json({
+    erro: {
+      mensagem,
+      ...(detalhes && { detalhes })
+    }
+  });
 }
 
 module.exports = tratarErros;

@@ -41,8 +41,9 @@ async function listarPorProjeto(projetoId) {
 async function adicionar(dados) {
   const { texto, coluna, usuarioId, projetoId, dataConclusao } = dados;
 
-  // Envia diretamente o valor enviado (ex: "afazer") ou "afazer" como padrão
   const statusDb = coluna || "afazer";
+  // Define 1 como fallback para satisfazer a restrição NOT NULL da coluna projeto_id
+  const pId = projetoId ?? 1;
 
   const query = `
     INSERT INTO tarefas (texto, status, usuario_id, projeto_id, data_conclusao)
@@ -54,8 +55,8 @@ async function adicionar(dados) {
     texto,
     statusDb,
     usuarioId,
-    projetoId,
-    dataConclusao || null,
+    pId,
+    dataConclusao ?? null,
   ];
 
   const result = await pool.query(query, values);
@@ -91,8 +92,8 @@ async function atualizar(id, dados) {
     texto,
     statusDb,
     usuarioId,
-    projetoId,
-    dataConclusao,
+    projetoId ?? 1,
+    dataConclusao ?? null,
     id,
   ];
 

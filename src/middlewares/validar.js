@@ -1,49 +1,38 @@
+const criarErro = require("../ultils/criarErro");
 
-function validar(schema) {
-  return function(req, res, next) {
+function validar(schema, origem) {
+  return function (req, res, next) {
+    const dados = req[origem || "body"] || {};
     const erros = [];
-    const body = req.body || {};
 
     for (const campo in schema) {
-      const regras  = schema[campo];
-      const valor   = body[campo];
-      const ausente = valor === undefined || valor === null || valor === '';
+      const regras = schema[campo];
+      const valor = dados[campo];
+      const ausente = valor === undefined || valor === null || valor === "";
 
-      // 1 — Campo obrigatório ausente
       if (regras.obrigatorio && ausente) {
         erros.push(`O campo '${campo}' é obrigatório`);
         continue;
       }
 
-      // Validações para campos preenchidos
-      if (!ausente) {
-        // 2 — Tipo do dado
-        if (regras.tipo && typeof valor !== regras.tipo) {
-          erros.push(`O campo '${campo}' deve ser do tipo ${regras.tipo}`);
-        }
+      if (ausente) continue;
 
-        // 3 — Tamanho mínimo de texto
-        if (regras.minLength && typeof valor === 'string' && valor.length < regras.minLength) {
-          erros.push(`O campo '${campo}' deve ter ao menos ${regras.minLength} caracteres`);
-        }
+      if (regras.tipo === "inteiro") {
+        const numero = typeof valor === "string" ? Number(valor) : valor;
 
-        // 4 — Tamanho máximo de texto
-        if (regras.maxLength && typeof valor === 'string' && valor.length > regras.maxLength) {
-          erros.push(`O campo '${campo}' deve ter no máximo ${regras.maxLength} caracteres`);
+        if (!Number.isInteger(numero) || numero <= 0) {
+          erros.push(`O campo '${campo}' deve ser inteiro positivo`);
         }
-
-        // 5 — Valores permitidos (enum)
-        if (regras.enum && Array.isArray(regras.enum) && !regras.enum.includes(valor)) {
-          erros.push(`O campo '${campo}' deve ser um dos valores: ${regras.enum.join(', ')}`);
-        }
+      } else if (regras.tipo && typeof valor !== regras.tipo) {
+        erros.push(`O campo '${campo}' deve ser do tipo ${regras.tipo}`);
       }
-    }
+    } 
 
     if (erros.length > 0) {
-      return res.status(400).json({ erros });
+      throw criarErro(400, "Dados inválidos", erros);
     }
 
-    return next();
+    next();
   };
 }
 
