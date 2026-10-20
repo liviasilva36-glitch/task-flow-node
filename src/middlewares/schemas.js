@@ -13,6 +13,16 @@ const schemas = {
     usuarioId: {
       tipo: "inteiro",
       obrigatorio: true
+    },
+    prioridadeId: {
+      tipo: "inteiro",
+      obrigatorio: false
+    }
+  },
+  prioridade: {
+    nome: {
+      tipo: "string",
+      obrigatorio: true
     }
   }
 };

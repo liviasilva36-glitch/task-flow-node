@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors");
+const cors = require("cors"); // 1. Módulo importado
 
 const logger = require("./src/middlewares/logger");
 const validarContentType = require("./src/middlewares/validarContentType");
@@ -12,6 +12,7 @@ const authRoutes = require("./src/routes/auth.routes");
 const tarefasRoutes = require("./src/routes/tarefas.routes");
 const usuariosRoutes = require("./src/routes/usuarios.routes");
 const projetosRoutes = require("./src/routes/projetos.routes");
+const prioridadesRoutes = require("./src/routes/prioridades.routes");
 
 const app = express();
 const PORTA = process.env.PORTA || 3001;
@@ -19,6 +20,9 @@ const PORTA = process.env.PORTA || 3001;
 // ===============================
 // MIDDLEWARES DE REQUISIÇÃO
 // ===============================
+
+// 2. ATIVAR O CORS PRIMEIRO (essencial para interceptar requisições OPTIONS do browser)
+app.use(cors());
 
 app.use(express.json());
 app.use(logger);
@@ -46,6 +50,7 @@ app.use("/auth", authRoutes);
 app.use("/usuarios", usuariosRoutes);
 app.use("/tarefas", tarefasRoutes);
 app.use("/projetos", projetosRoutes);
+app.use("/prioridades", prioridadesRoutes);
 
 // ===============================
 // 2. ROTA 404 (Se nenhuma rota acima respondeu)

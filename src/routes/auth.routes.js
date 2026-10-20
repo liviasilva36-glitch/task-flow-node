@@ -5,7 +5,8 @@ const router = express.Router();
 
 const usuarioModel = require("../models/usuario.model");
 
-router.post("/login", (req, res) => {
+// 1. Adicionado 'async' na função do middleware
+router.post("/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
 
@@ -16,8 +17,8 @@ router.post("/login", (req, res) => {
       });
     }
 
-    // Procura o usuário no MODEL
-    const usuario = usuarioModel.autenticar(email, senha);
+    // 2. Adicionado 'await' na chamada ao banco de dados
+    const usuario = await usuarioModel.autenticar(email, senha);
 
     // Usuário ou senha incorretos
     if (!usuario) {
@@ -26,8 +27,8 @@ router.post("/login", (req, res) => {
       });
     }
 
-    // Chave usada para criar o token
-    const secretKey = process.env.JWT_SECRET;
+    // Chave usada para criar o token (fallback para evitar erro caso a env não esteja definida)
+    const secretKey = process.env.JWT_SECRET || "minha_chave_secreta_padrao";
 
     // Dados que vão dentro do token
     const payload = {
