@@ -13,6 +13,20 @@ const prioridadesController = {
         }
       });
     }
+  },
+
+  contarTarefas: async (req, res) => {
+    try {
+      const contagem = await prioridadeModel.contarTarefasPorPrioridade();
+      return res.status(200).json(contagem);
+    } catch (error) {
+      return res.status(500).json({
+        erro: {
+          mensagem: "Erro ao contar tarefas por prioridade",
+          detalhe: error.message
+        }
+      });
+    }
   }
 };
 
