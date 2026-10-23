@@ -1,25 +1,41 @@
-const db = require("../database/db");
-
+const prisma = require("../database/db"); 
 const prioridade = {
+    // 1. Listar todas as prioridades ordenadas por ID
     listar: async () => {
-        const resultado = await db.query(
-            "SELECT id, nome FROM prioridades ORDER BY id"
-        );
-        return resultado.rows;
+        return await prisma.prioridades.findMany({
+            select: {
+                id: true,
+                nome: true,
+            },
+            orderBy: {
+                id: 'asc',
+            },
+        });
     },
+
+    // 2. Contar a quantidade de tarefas por prioridade
     contarTarefasPorPrioridade: async () => {
-        const query = `
-            SELECT 
-            p.id, 
-            p.nome, 
-            COUNT(t.id) as quantidade_tarefas
-            FROM prioridades p
-            LEFT JOIN tarefas t ON p.id = t.prioridade_id
-            GROUP BY p.id, p.nome
-        `;
-        const resultado = await db.query(query);
-        return resultado.rows;
-    }
+        const resultado = await prisma.prioridades.findMany({
+            select: {
+                id: true,
+                nome: true,
+                _count: {
+                    select: {
+                        tarefas: true,
+                    },
+                },
+            },
+            orderBy: {
+                id: 'asc',
+            },
+        });
+
+        return resultado.map((p) => ({
+            id: p.id,
+            nome: p.nome,
+            quantidade_tarefas: p._count.tarefas,
+        }));
+    },
 };
 
 module.exports = prioridade;

@@ -3,11 +3,16 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors"); // 1. Módulo importado
 
+
+const { PrismaClient } = require("./src/generated/prisma");
+const prisma = new PrismaClient();
+
 const logger = require("./src/middlewares/logger");
 const validarContentType = require("./src/middlewares/validarContentType");
 const tratarErros = require("./src/middlewares/erro.middleware");
 const criarErro = require("./src/ultils/criarErro");
-const pool = require("./src/database/db");
+
+// const pool = require("./src/database/db");
 const authRoutes = require("./src/routes/auth.routes");
 const tarefasRoutes = require("./src/routes/tarefas.routes");
 const usuariosRoutes = require("./src/routes/usuarios.routes");
@@ -23,7 +28,6 @@ const PORTA = process.env.PORTA || 3001;
 
 // 2. ATIVAR O CORS PRIMEIRO (essencial para interceptar requisições OPTIONS do browser)
 app.use(cors());
-
 app.use(express.json());
 app.use(logger);
 

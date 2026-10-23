@@ -1,9 +1,26 @@
 const tarefasModel = require("../models/tarefa.model");
 const criarErro = require("../ultils/criarErro");
-
+const prisma = require('../database/db');
 const prioridadesValidas = ["baixa", "media", "alta"];
 const colunasValidas = ["afazer", "andamento", "concluido"];
 const LIMITE_ANDAMENTO = 5;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const tarefasController = {
   async listar(req, res, next) {

@@ -1,5 +1,5 @@
 const express = require('express');
-
+const prisma = require("../database/db");
 const tarefasController = require('../controllers/tarefas.controller');
 const autenticar = require('../middlewares/autenticar');
 const schemas = require('../middlewares/schemas');
@@ -9,8 +9,15 @@ const router = express.Router();
 
 const idValido = validar(schemas.id, "params");
 
-// Comentado para os testes no Postman
-// router.use(autenticar);
+const buscarTarefas = async (req, res, next) => {
+  try {
+    const tarefas = await prisma.tarefas.findMany();
+    res.json(tarefas);
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 // Rotas de consulta / relatórios
 router.get('/', tarefasController.listar);
