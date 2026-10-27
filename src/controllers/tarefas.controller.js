@@ -6,6 +6,9 @@ const prioridadesValidas = ["baixa", "media", "alta"];
 const colunasValidas = ["afazer", "andamento", "concluido"];
 const LIMITE_ANDAMENTO = 5;
 
+// Função auxiliar para obter a instância do model de usuários
+const getUsuariosModel = () => prisma.usuario || prisma.usuarios;
+
 const tarefasController = {
   async listar(req, res, next) {
     try {
@@ -88,7 +91,7 @@ const tarefasController = {
 
   async criar(req, res, next) {
     try {
-      // 1. Mapeia campos do formulário (compatível com texto/titulo/tarefa)
+      // 1. Mapeia o texto enviado pelo formulário
       const textoInput = req.body.texto || req.body.titulo || req.body.tarefa;
       
       const {
@@ -98,7 +101,11 @@ const tarefasController = {
         projeto_id
       } = req.body;
 
-      // 2. Busca o usuarioId do token ou do body
+      if (!textoInput || !textoInput.trim()) {
+        throw criarErro(400, "Texto/Título da tarefa é obrigatório");
+      }
+
+      // 2. Tenta obter o usuarioId do token ou body
       const usuarioIdRaw = 
         req.usuario?.id || 
         req.body.usuarioId || 
@@ -106,13 +113,19 @@ const tarefasController = {
         req.body.usuario || 
         req.body.responsavelId;
 
-      if (!textoInput || !textoInput.trim()) {
-        throw criarErro(400, "Texto/Título da tarefa é obrigatório");
-      }
+      let parsedUsuarioId = Number(usuarioIdRaw);
 
-      const parsedUsuarioId = Number(usuarioIdRaw);
+      // Fallback defensivo: se não veio ID válido, busca o primeiro usuário do banco no Neon
       if (!usuarioIdRaw || isNaN(parsedUsuarioId)) {
-        throw criarErro(400, "usuarioId válido é obrigatório para associar a tarefa");
+        const primeiroUsuario = await getUsuariosModel().findFirst({
+          orderBy: { id: "asc" },
+        });
+
+        if (primeiroUsuario) {
+          parsedUsuarioId = primeiroUsuario.id;
+        } else {
+          throw criarErro(400, "É necessário selecionar um usuário válido cadastrado no banco.");
+        }
       }
 
       if (!prioridadesValidas.includes(prioridade)) {
@@ -131,11 +144,11 @@ const tarefasController = {
         }
       }
 
-      // 3. Trata projetoId: se for vazio, invalido ou NaN, grava null
+      // 3. Trata projetoId: se for nulo, inválido ou NaN, mantém null
       const rawProj = projetoId || projeto_id;
       const parsedProjetoId = rawProj && !isNaN(Number(rawProj)) ? Number(rawProj) : null;
 
-      // 4. Executa a criação interceptando erros conhecidos do Prisma
+      // 4. Cria a tarefa interceptando exceções de Foreign Key do Prisma
       try {
         const novaTarefa = await tarefasModel.adicionar({
           texto: textoInput.trim(),
@@ -148,7 +161,6 @@ const tarefasController = {
 
         return res.status(201).json(novaTarefa);
       } catch (prismaErro) {
-        // Captura erro de Foreign Key (ex: usuário ou projeto inexistente no banco)
         if (prismaErro.code === 'P2003' || prismaErro.message?.includes('Foreign key constraint')) {
           throw criarErro(400, "O responsável ou projeto selecionado não existe na base de dados.");
         }
