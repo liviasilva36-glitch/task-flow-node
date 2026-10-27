@@ -1,48 +1,48 @@
 const prisma = require("../database/db");
 
-// Formata o objeto do Prisma para o padrão JSON esperado pelo Frontend
+// Formata a tarefa para o padrão esperado pelo Frontend
 function formatarTarefa(tarefa) {
   if (!tarefa) return null;
   return {
     id: tarefa.id,
-    texto: tarefa.texto || tarefa.titulo || tarefa.descricao,
-    coluna: tarefa.status || "afazer",
-    usuarioId: tarefa.usuario_id || tarefa.usuarioId,
-    projetoId: tarefa.projeto_id || tarefa.projetoId,
-    dataConclusao: tarefa.data_conclusao || tarefa.dataConclusao,
+    texto: tarefa.texto,
+    coluna: tarefa.status || tarefa.coluna || "afazer",
+    usuarioId: tarefa.usuario_id,
+    projetoId: tarefa.projeto_id,
+    dataConclusao: tarefa.data_conclusao || tarefa.concluida_em,
   };
 }
 
 async function listar() {
-  const tarefas = await prisma.tarefa.findMany({
+  const tarefas = await prisma.tarefas.findMany({
     orderBy: { id: "asc" },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function buscar(id) {
-  const tarefa = await prisma.tarefa.findUnique({
+  const tarefa = await prisma.tarefas.findUnique({
     where: { id: Number(id) },
   });
   return formatarTarefa(tarefa);
 }
 
 async function listarPorColuna(coluna) {
-  const tarefas = await prisma.tarefa.findMany({
+  const tarefas = await prisma.tarefas.findMany({
     where: { status: coluna },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorUsuario(usuarioId) {
-  const tarefas = await prisma.tarefa.findMany({
+  const tarefas = await prisma.tarefas.findMany({
     where: { usuario_id: Number(usuarioId) },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorProjeto(projetoId) {
-  const tarefas = await prisma.tarefa.findMany({
+  const tarefas = await prisma.tarefas.findMany({
     where: { projeto_id: Number(projetoId) },
   });
   return tarefas.map(formatarTarefa);
@@ -54,11 +54,11 @@ async function adicionar(dados) {
   const statusDb = coluna || "afazer";
   const pId = projetoId ? Number(projetoId) : 1;
 
-  const novaTarefa = await prisma.tarefa.create({
+  const novaTarefa = await prisma.tarefas.create({
     data: {
       texto,
       status: statusDb,
-      usuario_id: usuarioId ? Number(usuarioId) : null,
+      usuario_id: Number(usuarioId),
       projeto_id: pId,
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
     },
@@ -81,13 +81,13 @@ async function atualizar(id, dados) {
 
   const statusDb = coluna || "afazer";
 
-  const tarefaAtualizada = await prisma.tarefa.update({
+  const tarefaAtualizada = await prisma.tarefas.update({
     where: { id: Number(id) },
     data: {
       texto,
       status: statusDb,
-      usuario_id: usuarioId ? Number(usuarioId) : null,
-      projeto_id: projetoId ? Number(projetoId) : 1,
+      usuario_id: Number(usuarioId),
+      projeto_id: Number(projetoId),
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
     },
   });
@@ -96,7 +96,7 @@ async function atualizar(id, dados) {
 }
 
 async function remover(id) {
-  const tarefaRemovida = await prisma.tarefa.delete({
+  const tarefaRemovida = await prisma.tarefas.delete({
     where: { id: Number(id) },
   });
   return formatarTarefa(tarefaRemovida);
