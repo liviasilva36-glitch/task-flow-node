@@ -1,3 +1,4 @@
+
 const prisma = require("../database/db");
 
 // Formata a tarefa para o padrão esperado pelo Frontend
@@ -7,6 +8,7 @@ function formatarTarefa(tarefa) {
     id: tarefa.id,
     texto: tarefa.texto,
     coluna: tarefa.status || tarefa.coluna || "afazer",
+    prioridade: tarefa.prioridade || "media",
     usuarioId: tarefa.usuario_id,
     projetoId: tarefa.projeto_id,
     dataConclusao: tarefa.data_conclusao || tarefa.concluida_em,
@@ -49,15 +51,17 @@ async function listarPorProjeto(projetoId) {
 }
 
 async function adicionar(dados) {
-  const { texto, coluna, usuarioId, projetoId, dataConclusao } = dados;
+  const { texto, coluna, usuarioId, projetoId, dataConclusao, prioridade } = dados;
 
   const statusDb = coluna || "afazer";
-  const pId = projetoId ? Number(projetoId) : 1;
+  // Aceita projetoId apenas se for um número válido, caso contrário atribui null
+  const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
 
   const novaTarefa = await prisma.tarefas.create({
     data: {
       texto,
       status: statusDb,
+      prioridade: prioridade || "media",
       usuario_id: Number(usuarioId),
       projeto_id: pId,
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
@@ -75,19 +79,22 @@ async function atualizar(id, dados) {
 
   const texto = dados.texto !== undefined ? dados.texto : tarefaAtual.texto;
   const coluna = dados.coluna !== undefined ? dados.coluna : tarefaAtual.coluna;
+  const prioridade = dados.prioridade !== undefined ? dados.prioridade : tarefaAtual.prioridade;
   const usuarioId = dados.usuarioId !== undefined ? dados.usuarioId : tarefaAtual.usuarioId;
   const projetoId = dados.projetoId !== undefined ? dados.projetoId : tarefaAtual.projetoId;
   const dataConclusao = dados.dataConclusao !== undefined ? dados.dataConclusao : tarefaAtual.dataConclusao;
 
   const statusDb = coluna || "afazer";
+  const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
 
   const tarefaAtualizada = await prisma.tarefas.update({
     where: { id: Number(id) },
     data: {
       texto,
       status: statusDb,
+      prioridade,
       usuario_id: Number(usuarioId),
-      projeto_id: Number(projetoId),
+      projeto_id: pId,
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
     },
   });
