@@ -1,4 +1,3 @@
-
 const prisma = require("../database/db");
 
 // Formata a tarefa para o padrão esperado pelo Frontend
@@ -15,36 +14,39 @@ function formatarTarefa(tarefa) {
   };
 }
 
+// Garante o acesso correto ao modelo (singular ou plural) no Prisma
+const getModel = () => prisma.tarefa || prisma.tarefas;
+
 async function listar() {
-  const tarefas = await prisma.tarefas.findMany({
+  const tarefas = await getModel().findMany({
     orderBy: { id: "asc" },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function buscar(id) {
-  const tarefa = await prisma.tarefas.findUnique({
+  const tarefa = await getModel().findUnique({
     where: { id: Number(id) },
   });
   return formatarTarefa(tarefa);
 }
 
 async function listarPorColuna(coluna) {
-  const tarefas = await prisma.tarefas.findMany({
+  const tarefas = await getModel().findMany({
     where: { status: coluna },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorUsuario(usuarioId) {
-  const tarefas = await prisma.tarefas.findMany({
+  const tarefas = await getModel().findMany({
     where: { usuario_id: Number(usuarioId) },
   });
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorProjeto(projetoId) {
-  const tarefas = await prisma.tarefas.findMany({
+  const tarefas = await getModel().findMany({
     where: { projeto_id: Number(projetoId) },
   });
   return tarefas.map(formatarTarefa);
@@ -54,15 +56,19 @@ async function adicionar(dados) {
   const { texto, coluna, usuarioId, projetoId, dataConclusao, prioridade } = dados;
 
   const statusDb = coluna || "afazer";
-  // Aceita projetoId apenas se for um número válido, caso contrário atribui null
   const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
+  const uId = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : null;
 
-  const novaTarefa = await prisma.tarefas.create({
+  if (!uId) {
+    throw new Error("ID do usuário inválido ou ausente para vincular a tarefa.");
+  }
+
+  const novaTarefa = await getModel().create({
     data: {
       texto,
       status: statusDb,
       prioridade: prioridade || "media",
-      usuario_id: Number(usuarioId),
+      usuario_id: uId,
       projeto_id: pId,
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
     },
@@ -86,14 +92,15 @@ async function atualizar(id, dados) {
 
   const statusDb = coluna || "afazer";
   const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
+  const uId = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : tarefaAtual.usuarioId;
 
-  const tarefaAtualizada = await prisma.tarefas.update({
+  const tarefaAtualizada = await getModel().update({
     where: { id: Number(id) },
     data: {
       texto,
       status: statusDb,
       prioridade,
-      usuario_id: Number(usuarioId),
+      usuario_id: uId,
       projeto_id: pId,
       data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
     },
@@ -103,7 +110,7 @@ async function atualizar(id, dados) {
 }
 
 async function remover(id) {
-  const tarefaRemovida = await prisma.tarefas.delete({
+  const tarefaRemovida = await getModel().delete({
     where: { id: Number(id) },
   });
   return formatarTarefa(tarefaRemovida);
