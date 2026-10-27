@@ -135,16 +135,25 @@ const tarefasController = {
       const rawProj = projetoId || projeto_id;
       const parsedProjetoId = rawProj && !isNaN(Number(rawProj)) ? Number(rawProj) : null;
 
-      const novaTarefa = await tarefasModel.adicionar({
-        texto: textoInput.trim(),
-        prioridade,
-        coluna,
-        usuarioId: parsedUsuarioId,
-        projetoId: parsedProjetoId,
-        dataConclusao: coluna === "concluido" ? new Date().toISOString() : null,
-      });
+      // 4. Executa a criação interceptando erros conhecidos do Prisma
+      try {
+        const novaTarefa = await tarefasModel.adicionar({
+          texto: textoInput.trim(),
+          prioridade,
+          coluna,
+          usuarioId: parsedUsuarioId,
+          projetoId: parsedProjetoId,
+          dataConclusao: coluna === "concluido" ? new Date().toISOString() : null,
+        });
 
-      res.status(201).json(novaTarefa);
+        return res.status(201).json(novaTarefa);
+      } catch (prismaErro) {
+        // Captura erro de Foreign Key (ex: usuário ou projeto inexistente no banco)
+        if (prismaErro.code === 'P2003' || prismaErro.message?.includes('Foreign key constraint')) {
+          throw criarErro(400, "O responsável ou projeto selecionado não existe na base de dados.");
+        }
+        throw prismaErro;
+      }
     } catch (erro) {
       next(erro);
     }
