@@ -1,66 +1,70 @@
-const pool = require("../database/db");
+const prisma = require("../database/db");
 
-// Formata a linha do PostgreSQL para o padrão JSON esperado pelo Frontend
-function formatarTarefa(row) {
-  if (!row) return null;
+// Formata o objeto do Prisma para o padrão JSON esperado pelo Frontend
+function formatarTarefa(tarefa) {
+  if (!tarefa) return null;
   return {
-    id: row.id,
-    texto: row.texto || row.titulo || row.descricao,
-    coluna: row.status || "afazer",
-    usuarioId: row.usuario_id,
-    projetoId: row.projeto_id,
-    dataConclusao: row.data_conclusao,
+    id: tarefa.id,
+    texto: tarefa.texto || tarefa.titulo || tarefa.descricao,
+    coluna: tarefa.status || "afazer",
+    usuarioId: tarefa.usuario_id || tarefa.usuarioId,
+    projetoId: tarefa.projeto_id || tarefa.projetoId,
+    dataConclusao: tarefa.data_conclusao || tarefa.dataConclusao,
   };
 }
 
 async function listar() {
-  const result = await pool.query("SELECT * FROM tarefas ORDER BY id ASC");
-  return result.rows.map(formatarTarefa);
+  const tarefas = await prisma.tarefa.findMany({
+    orderBy: { id: "asc" },
+  });
+  return tarefas.map(formatarTarefa);
 }
 
 async function buscar(id) {
-  const result = await pool.query("SELECT * FROM tarefas WHERE id = $1", [id]);
-  return formatarTarefa(result.rows[0]);
+  const tarefa = await prisma.tarefa.findUnique({
+    where: { id: Number(id) },
+  });
+  return formatarTarefa(tarefa);
 }
 
 async function listarPorColuna(coluna) {
-  const result = await pool.query("SELECT * FROM tarefas WHERE status = $1", [coluna]);
-  return result.rows.map(formatarTarefa);
+  const tarefas = await prisma.tarefa.findMany({
+    where: { status: coluna },
+  });
+  return tarefas.map(formatarTarefa);
 }
 
 async function listarPorUsuario(usuarioId) {
-  const result = await pool.query("SELECT * FROM tarefas WHERE usuario_id = $1", [usuarioId]);
-  return result.rows.map(formatarTarefa);
+  const tarefas = await prisma.tarefa.findMany({
+    where: { usuario_id: Number(usuarioId) },
+  });
+  return tarefas.map(formatarTarefa);
 }
 
 async function listarPorProjeto(projetoId) {
-  const result = await pool.query("SELECT * FROM tarefas WHERE projeto_id = $1", [projetoId]);
-  return result.rows.map(formatarTarefa);
+  const tarefas = await prisma.tarefa.findMany({
+    where: { projeto_id: Number(projetoId) },
+  });
+  return tarefas.map(formatarTarefa);
 }
 
 async function adicionar(dados) {
   const { texto, coluna, usuarioId, projetoId, dataConclusao } = dados;
 
   const statusDb = coluna || "afazer";
-  // Define 1 como fallback para satisfazer a restrição NOT NULL da coluna projeto_id
-  const pId = projetoId ?? 1;
+  const pId = projetoId ? Number(projetoId) : 1;
 
-  const query = `
-    INSERT INTO tarefas (texto, status, usuario_id, projeto_id, data_conclusao)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *
-  `;
+  const novaTarefa = await prisma.tarefa.create({
+    data: {
+      texto,
+      status: statusDb,
+      usuario_id: usuarioId ? Number(usuarioId) : null,
+      projeto_id: pId,
+      data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
+    },
+  });
 
-  const values = [
-    texto,
-    statusDb,
-    usuarioId,
-    pId,
-    dataConclusao ?? null,
-  ];
-
-  const result = await pool.query(query, values);
-  return formatarTarefa(result.rows[0]);
+  return formatarTarefa(novaTarefa);
 }
 
 async function atualizar(id, dados) {
@@ -77,39 +81,25 @@ async function atualizar(id, dados) {
 
   const statusDb = coluna || "afazer";
 
-  const query = `
-    UPDATE tarefas
-    SET texto = $1,
-        status = $2,
-        usuario_id = $3,
-        projeto_id = $4,
-        data_conclusao = $5
-    WHERE id = $6
-    RETURNING *
-  `;
+  const tarefaAtualizada = await prisma.tarefa.update({
+    where: { id: Number(id) },
+    data: {
+      texto,
+      status: statusDb,
+      usuario_id: usuarioId ? Number(usuarioId) : null,
+      projeto_id: projetoId ? Number(projetoId) : 1,
+      data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
+    },
+  });
 
-  const values = [
-    texto,
-    statusDb,
-    usuarioId,
-    projetoId ?? 1,
-    dataConclusao ?? null,
-    id,
-  ];
-
-  const result = await pool.query(query, values);
-  return formatarTarefa(result.rows[0]);
+  return formatarTarefa(tarefaAtualizada);
 }
 
 async function remover(id) {
-  const query = `
-    DELETE FROM tarefas 
-    WHERE id = $1 
-    RETURNING *
-  `;
-
-  const result = await pool.query(query, [id]);
-  return formatarTarefa(result.rows[0]);
+  const tarefaRemovida = await prisma.tarefa.delete({
+    where: { id: Number(id) },
+  });
+  return formatarTarefa(tarefaRemovida);
 }
 
 module.exports = {
