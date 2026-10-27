@@ -1,4 +1,4 @@
-require("dotenv").config();
+xrequire("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -25,8 +25,7 @@ const PORTA = process.env.PORTA || 3001;
 // MIDDLEWARES DE REQUISIÇÃO
 // ===============================
 
-// 1. Configuração de CORS completa antes das rotas
-app.use(cors({
+const corsOptions = {
   origin: [
     "https://task-flow-frontend-teal.vercel.app",
     "http://localhost:5173"
@@ -34,12 +33,20 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
+
+// 1. Aplica CORS e responde a requisições de preflight (OPTIONS)
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 app.use(logger);
 
+// 2. Valida Content-Type apenas para requisições com corpo e ignora OPTIONS
 app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return next();
+  }
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     return validarContentType(req, res, next);
   }
