@@ -1,10 +1,10 @@
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors"); // 1. Módulo importado
+const cors = require("cors");
 
-
-const { PrismaClient } = require("./src/generated/prisma");
+// Importação padrão do Prisma Client
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const logger = require("./src/middlewares/logger");
@@ -12,7 +12,6 @@ const validarContentType = require("./src/middlewares/validarContentType");
 const tratarErros = require("./src/middlewares/erro.middleware");
 const criarErro = require("./src/ultils/criarErro");
 
-// const pool = require("./src/database/db");
 const authRoutes = require("./src/routes/auth.routes");
 const tarefasRoutes = require("./src/routes/tarefas.routes");
 const usuariosRoutes = require("./src/routes/usuarios.routes");
@@ -26,8 +25,17 @@ const PORTA = process.env.PORTA || 3001;
 // MIDDLEWARES DE REQUISIÇÃO
 // ===============================
 
-// 2. ATIVAR O CORS PRIMEIRO (essencial para interceptar requisições OPTIONS do browser)
-app.use(cors());
+// 1. Configuração de CORS completa antes das rotas
+app.use(cors({
+  origin: [
+    "https://task-flow-frontend-teal.vercel.app",
+    "http://localhost:5173"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(logger);
 
@@ -39,7 +47,7 @@ app.use((req, res, next) => {
 });
 
 // ===============================
-// 1. ROTAS (Sempre primeiro)
+// ROTAS
 // ===============================
 
 app.get("/", (req, res) => {
@@ -57,17 +65,13 @@ app.use("/projetos", projetosRoutes);
 app.use("/prioridades", prioridadesRoutes);
 
 // ===============================
-// 2. ROTA 404 (Se nenhuma rota acima respondeu)
+// ROTA 404 E ERROS
 // ===============================
 
 app.use((req, res) => {
   const rota = `${req.method} ${req.url}`;
   throw criarErro(404, `Rota ${rota} não encontrada`);
 });
-
-// ===============================
-// 3. TRATAMENTO DE ERROS (Sempre por último)
-// ===============================
 
 app.use(tratarErros);
 
