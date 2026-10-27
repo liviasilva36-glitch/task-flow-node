@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -34,12 +33,12 @@ model pedidos {
 }
 
 model pedidositens {
-  id        Int      @id(map: "pedidositens_pk") @default(autoincrement())
-  idpedido  Int?
-  idproduto Int?
-  valor     Decimal? @db.Decimal(18, 2)
-  desconto  Decimal? @db.Decimal(18, 2)
-  quantidade String? @db.VarChar
+  id         Int      @id(map: "pedidositens_pk") @default(autoincrement())
+  idpedido   Int?
+  idproduto  Int?
+  valor      Decimal? @db.Decimal(18, 2)
+  desconto   Decimal? @db.Decimal(18, 2)
+  quantidade String?  @db.VarChar
 }
 
 model prioridades {
@@ -56,13 +55,13 @@ model produtos {
 }
 
 model projetos {
-  id         Int       @id @default(autoincrement())
-  nome       String    @db.VarChar(100)
-  descricao  String?
+  id        Int       @id @default(autoincrement())
+  nome      String    @db.VarChar(100)
+  descricao String?
   usuario_id Int
-  criado_em  DateTime? @default(now()) @db.Timestamp(6)
-  usuarios   usuarios  @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tarefas    tarefas[]
+  criado_em DateTime? @default(now()) @db.Timestamp(6)
+  usuarios  usuarios  @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tarefas   tarefas[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -76,7 +75,7 @@ model tarefas {
   criado_em      DateTime?    @default(now()) @db.Timestamp(6)
   status         String?      @default("a_fazer") @db.VarChar(20)
   data_criacao   DateTime?    @default(now()) @db.Timestamp(6)
-  data_inicio    DateTime?    @db.Timestamp(6)
+  data_inicio    DateTime?    @default(now()) @db.Timestamp(6)
   data_conclusao DateTime?    @db.Timestamp(6)
   iniciada_em    DateTime?    @db.Timestamp(6)
   concluida_em   DateTime?    @db.Timestamp(6)
