@@ -31,22 +31,27 @@ const corsOptions = {
     "http://localhost:5173"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 200
 };
 
-// 1. Aplica CORS e responde a requisições de preflight (OPTIONS)
+// 1. Aplica CORS globalmente
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+// 2. Intercepta requisições OPTIONS e responde imediatamente com 200 OK para o preflight
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(logger);
 
-// 2. Valida Content-Type apenas para requisições com corpo e ignora OPTIONS
+// 3. Valida Content-Type apenas para métodos com corpo
 app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return next();
-  }
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     return validarContentType(req, res, next);
   }
