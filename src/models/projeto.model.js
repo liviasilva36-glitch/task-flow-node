@@ -1,47 +1,97 @@
-const pool = require("../database/db");
+const prisma = require("../database/db");
+
+// Suporta esquemas do Prisma com nomes 'projeto' ou 'projetos'
+const db = prisma.projeto || prisma.projetos;
 
 async function listar() {
-  const result = await pool.query("SELECT * FROM projetos ORDER BY id ASC");
-  return result.rows;
+  return await db.findMany({
+    orderBy: {
+      nome: "asc",
+    },
+    // Corrigido de 'usuario' para 'usuarios'
+    include: {
+      usuarios: {
+        select: {
+          nome: true,
+        },
+      },
+    },
+  });
 }
 
 async function buscarPorId(id) {
-  const result = await pool.query("SELECT * FROM projetos WHERE id = $1", [id]);
-  return result.rows[0] || null;
+  const projeto = await db.findUnique({
+    where: {
+      id: Number(id),
+    },
+    // Corrigido de 'usuario' para 'usuarios'
+    include: {
+      usuarios: {
+        select: {
+          nome: true,
+        },
+      },
+    },
+  });
+
+  return projeto || null;
 }
 
 async function criar(dados) {
-  const { nome, descricao } = dados;
-  const query = `
-    INSERT INTO projetos (nome, descricao)
-    VALUES ($1, $2)
-    RETURNING *
-  `;
-  const result = await pool.query(query, [nome, descricao]);
-  return result.rows[0];
+  const { nome, descricao, usuario_id } = dados;
+
+  return await db.create({
+    data: {
+      nome,
+      descricao,
+      usuario_id: usuario_id ? Number(usuario_id) : undefined,
+    },
+    // Corrigido de 'usuario' para 'usuarios'
+    include: {
+      usuarios: {
+        select: {
+          nome: true,
+        },
+      },
+    },
+  });
 }
 
 async function atualizar(id, dados) {
   const projetoAtual = await buscarPorId(id);
   if (!projetoAtual) return null;
 
-  const nome = dados.nome !== undefined ? dados.nome : projetoAtual.nome;
-  const descricao = dados.descricao !== undefined ? dados.descricao : projetoAtual.descricao;
+  const dataToUpdate = {};
+  if (dados.nome !== undefined) dataToUpdate.nome = dados.nome;
+  if (dados.descricao !== undefined) dataToUpdate.descricao = dados.descricao;
+  if (dados.usuario_id !== undefined) dataToUpdate.usuario_id = Number(dados.usuario_id);
 
-  const query = `
-    UPDATE projetos
-    SET nome = $1, descricao = $2
-    WHERE id = $3
-    RETURNING *
-  `;
-  const result = await pool.query(query, [nome, descricao, id]);
-  return result.rows[0];
+  return await db.update({
+    where: {
+      id: Number(id),
+    },
+    data: dataToUpdate,
+    // Corrigido de 'usuario' para 'usuarios'
+    include: {
+      usuarios: {
+        select: {
+          nome: true,
+        },
+      },
+    },
+  });
 }
 
 async function remover(id) {
-  const query = "DELETE FROM projetos WHERE id = $1 RETURNING *";
-  const result = await pool.query(query, [id]);
-  return result.rows[0] || null;
+  try {
+    return await db.delete({
+      where: {
+        id: Number(id),
+      },
+    });
+  } catch (error) {
+    return null;
+  }
 }
 
 module.exports = {

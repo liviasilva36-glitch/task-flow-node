@@ -1,47 +1,82 @@
-const pool = require("../database/db");
+const prisma = require("../database/db");
+
+// Suporta esquemas do Prisma com nomes 'usuario', 'Usuario' ou 'usuarios'
+const db = prisma.usuario || prisma.Usuario || prisma.usuarios;
 
 const usuarioModel = {
   async listar() {
-    const result = await pool.query(
-      "SELECT id, nome, email FROM usuarios ORDER BY id ASC"
-    );
-    return result.rows;
+    return await db.findMany({
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
   },
 
   async buscarPorId(id) {
-    const result = await pool.query(
-      "SELECT id, nome, email FROM usuarios WHERE id = $1",
-      [id]
-    );
-    return result.rows[0] || null;
+    return await db.findUnique({
+      where: { id: Number(id) },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
+    });
   },
 
   async buscarPorEmail(email) {
-    const result = await pool.query(
-      "SELECT * FROM usuarios WHERE email = $1",
-      [email]
-    );
-    return result.rows[0] || null;
+    return await db.findUnique({
+      where: { email },
+    });
   },
 
   async autenticar(email, senha) {
-    // Corrigido 'senha' para 'senha_hash'
-    const result = await pool.query(
-      "SELECT id, nome, email FROM usuarios WHERE email = $1 AND senha_hash = $2",
-      [email, senha]
-    );
-    return result.rows[0] || null;
+    let emailValor;
+    let senhaValor;
+
+    // Trata se o primeiro argumento for um objeto (ex: req.body enviado diretamente)
+    if (typeof email === "object" && email !== null) {
+      emailValor = email.email;
+      senhaValor = email.senha;
+    } else {
+      emailValor = email;
+      senhaValor = senha;
+    }
+
+    if (!emailValor || !senhaValor) {
+      return null;
+    }
+
+    return await db.findFirst({
+      where: {
+        email: emailValor,
+        senha_hash: senhaValor,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
+    });
   },
 
   async criar(nome, email, senha) {
-    // Corrigido 'senha' para 'senha_hash'
-    const query = `
-      INSERT INTO usuarios (nome, email, senha_hash)
-      VALUES ($1, $2, $3)
-      RETURNING id, nome, email
-    `;
-    const result = await pool.query(query, [nome, email, senha]);
-    return result.rows[0];
+    return await db.create({
+      data: {
+        nome,
+        email,
+        senha_hash: senha,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
+    });
   },
 
   async atualizar(id, dados) {
@@ -50,30 +85,35 @@ const usuarioModel = {
       return null;
     }
 
-    const nome = dados.nome !== undefined ? dados.nome : usuarioAtual.nome;
-    const email = dados.email !== undefined ? dados.email : usuarioAtual.email;
-    const senha = dados.senha !== undefined ? dados.senha : null;
+    const dataToUpdate = {};
+    if (dados && dados.nome !== undefined) dataToUpdate.nome = dados.nome;
+    if (dados && dados.email !== undefined) dataToUpdate.email = dados.email;
+    if (dados && dados.senha !== undefined) dataToUpdate.senha_hash = dados.senha;
 
-    // Corrigido 'senha' para 'senha_hash'
-    const query = `
-      UPDATE usuarios
-      SET nome = $1, email = $2, senha_hash = COALESCE($3, senha_hash)
-      WHERE id = $4
-      RETURNING id, nome, email
-    `;
-
-    const result = await pool.query(query, [nome, email, senha, id]);
-    return result.rows[0];
+    return await db.update({
+      where: { id: Number(id) },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
+    });
   },
 
   async remover(id) {
-    const query = `
-      DELETE FROM usuarios 
-      WHERE id = $1 
-      RETURNING id, nome, email
-    `;
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
+    try {
+      return await db.delete({
+        where: { id: Number(id) },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+        },
+      });
+    } catch (error) {
+      return null;
+    }
   },
 };
 
