@@ -80,7 +80,7 @@ const tarefasController = {
       const tarefa = await tarefasModel.buscar(id);
 
       if (!tarefa) {
-        throw criarErro(404, "Tarefa não encontrada, por favor verifique o ID informado");
+        throw criarErro(404, "Tarefa não encontrada");
       }
 
       res.json(tarefa);
@@ -91,7 +91,7 @@ const tarefasController = {
 
   async criar(req, res, next) {
     try {
-      // 1. Mapeia o texto enviado pelo formulário
+      // 1. Mapeia o texto enviado pelo formulário ou JSON
       const textoInput = req.body.texto || req.body.titulo || req.body.tarefa;
       
       const {
@@ -115,7 +115,7 @@ const tarefasController = {
 
       let parsedUsuarioId = Number(usuarioIdRaw);
 
-      // Fallback defensivo: se não veio ID válido, busca o primeiro usuário do banco no Neon
+      // Fallback defensivo: se não veio ID válido, busca o primeiro usuário do banco
       if (!usuarioIdRaw || isNaN(parsedUsuarioId)) {
         const primeiroUsuario = await getUsuariosModel().findFirst({
           orderBy: { id: "asc" },
@@ -124,16 +124,8 @@ const tarefasController = {
         if (primeiroUsuario) {
           parsedUsuarioId = primeiroUsuario.id;
         } else {
-          throw criarErro(400, "É necessário selecionar um usuário válido cadastrado no banco.");
+          throw criarErro(400, "Um dos ids informados não existe");
         }
-      }
-
-      if (!prioridadesValidas.includes(prioridade)) {
-        throw criarErro(400, "Prioridade inválida", prioridadesValidas);
-      }
-
-      if (!colunasValidas.includes(coluna)) {
-        throw criarErro(400, "Coluna inválida", colunasValidas);
       }
 
       if (coluna === "andamento") {
@@ -148,7 +140,7 @@ const tarefasController = {
       const rawProj = projetoId || projeto_id;
       const parsedProjetoId = rawProj && !isNaN(Number(rawProj)) ? Number(rawProj) : null;
 
-      // 4. Cria a tarefa interceptando exceções de Foreign Key do Prisma
+      // 4. Cria a tarefa interceptando exceções de Foreign Key do Prisma / Model
       try {
         const novaTarefa = await tarefasModel.adicionar({
           texto: textoInput.trim(),
@@ -161,12 +153,20 @@ const tarefasController = {
 
         return res.status(201).json(novaTarefa);
       } catch (prismaErro) {
-        if (prismaErro.code === 'P2003' || prismaErro.message?.includes('Foreign key constraint')) {
-          throw criarErro(400, "O responsável ou projeto selecionado não existe na base de dados.");
+        if (
+          prismaErro.code === 'P2003' || 
+          prismaErro.statusCode === 400 || 
+          prismaErro.message === "Um dos ids informados não existe" ||
+          prismaErro.message?.includes('Foreign key constraint')
+        ) {
+          throw criarErro(400, "Um dos ids informados não existe");
         }
         throw prismaErro;
       }
     } catch (erro) {
+      if (erro.statusCode === 400 || erro.message === "Um dos ids informados não existe") {
+        return res.status(400).json({ erro: erro.message });
+      }
       next(erro);
     }
   },
@@ -177,18 +177,10 @@ const tarefasController = {
       const tarefa = await tarefasModel.buscar(id);
 
       if (!tarefa) {
-        throw criarErro(404, "Tarefa não encontrada");
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
       }
 
       const { texto, prioridade, coluna, usuarioId, projetoId } = req.body;
-
-      if (prioridade !== undefined && !prioridadesValidas.includes(prioridade)) {
-        throw criarErro(400, "Prioridade inválida", prioridadesValidas);
-      }
-
-      if (coluna !== undefined && !colunasValidas.includes(coluna)) {
-        throw criarErro(400, "Coluna inválida", colunasValidas);
-      }
 
       if (coluna === "andamento" && tarefa.coluna !== "andamento") {
         const andamento = await tarefasModel.listarPorColuna("andamento");
@@ -216,10 +208,23 @@ const tarefasController = {
         dadosAtualizados.dataConclusao = null;
       }
 
-      const atualizada = await tarefasModel.atualizar(id, dadosAtualizados);
-
-      res.json(atualizada);
+      try {
+        const atualizada = await tarefasModel.atualizar(id, dadosAtualizados);
+        return res.json(atualizada);
+      } catch (errAtualizar) {
+        if (
+          errAtualizar.code === 'P2003' || 
+          errAtualizar.statusCode === 400 || 
+          errAtualizar.message === "Um dos ids informados não existe"
+        ) {
+          return res.status(400).json({ erro: "Um dos ids informados não existe" });
+        }
+        throw errAtualizar;
+      }
     } catch (erro) {
+      if (erro.statusCode === 404 || erro.message === "Tarefa não encontrada") {
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
+      }
       next(erro);
     }
   },
@@ -230,14 +235,14 @@ const tarefasController = {
       const removida = await tarefasModel.remover(id);
 
       if (!removida) {
-        throw criarErro(404, "Tarefa não encontrada para remoção, verifique o ID informado");
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
       }
 
-      res.json({
-        mensagem: "Tarefa removida com sucesso",
-        tarefa: removida,
-      });
+      return res.status(200).json(removida);
     } catch (erro) {
+      if (erro.statusCode === 404 || erro.message === "Tarefa não encontrada") {
+        return res.status(404).json({ erro: "Tarefa não encontrada" });
+      }
       next(erro);
     }
   },

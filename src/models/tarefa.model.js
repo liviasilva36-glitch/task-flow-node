@@ -1,25 +1,58 @@
 const prisma = require("../database/db");
 
-// Formata a tarefa para o padrão esperado pelo Frontend
+// Objeto de inclusão exato com base no schema.prisma
+const incluirNomes = {
+  projetos: { select: { nome: true } },
+  usuarios: { select: { nome: true } },
+  prioridades: { select: { nome: true } },
+};
+
+// Converte do valor da base de dados (todo/doing/done) para o padrão do Frontend (afazer/andamento/concluido)
+function mapearColunaParaFront(coluna) {
+  if (coluna === "todo") return "afazer";
+  if (coluna === "doing") return "andamento";
+  if (coluna === "done") return "concluido";
+  return coluna || "afazer";
+}
+
+// Converte do Frontend/Postman para a constraint do Banco de Dados
+function mapearColunaParaBanco(coluna) {
+  if (!coluna) return "todo";
+  const c = coluna.toLowerCase();
+  if (c === "afazer" || c === "a_fazer" || c === "todo") return "todo";
+  if (c === "andamento" || c === "em_andamento" || c === "doing") return "doing";
+  if (c === "concluido" || c === "concluida" || c === "done") return "done";
+  return c;
+}
+
+// Formata a tarefa devolvendo estritamente os campos necessários em camelCase sem duplicações
 function formatarTarefa(tarefa) {
   if (!tarefa) return null;
+
   return {
     id: tarefa.id,
     texto: tarefa.texto,
-    coluna: tarefa.status || tarefa.coluna || "afazer",
-    prioridade: tarefa.prioridade || "media",
+    coluna: mapearColunaParaFront(tarefa.coluna || tarefa.status),
+    ordem: tarefa.ordem ?? 0,
     usuarioId: tarefa.usuario_id || tarefa.usuarioId,
-    projetoId: tarefa.projeto_id || tarefa.projetoId,
-    dataConclusao: tarefa.data_conclusao || tarefa.concluida_em || tarefa.dataConclusao,
+    projetoId: tarefa.projeto_id || tarefa.projetoId || null,
+    prioridadeId: tarefa.prioridade_id || tarefa.prioridadeId || 1,
+    usuario: tarefa.usuarios?.nome || tarefa.usuario || null,
+    projeto: tarefa.projetos?.nome || tarefa.projeto || null,
+    prioridade: tarefa.prioridades?.nome || tarefa.prioridade || "Média",
+    criadoEm: tarefa.criado_em || tarefa.data_criacao,
+    iniciadaEm: tarefa.iniciada_em || tarefa.data_inicio,
+    concluidaEm: tarefa.concluida_em || tarefa.data_conclusao,
   };
 }
 
-// Retorna dinamicamente o modelo do Prisma (singular ou plural)
+// Retorna o modelo do Prisma
 const getModel = () => prisma.tarefa || prisma.tarefas;
 
 async function listar() {
   const tarefas = await getModel().findMany({
     orderBy: { id: "asc" },
+    include: incluirNomes,
   });
   return tarefas.map(formatarTarefa);
 }
@@ -27,131 +60,154 @@ async function listar() {
 async function buscar(id) {
   const tarefa = await getModel().findUnique({
     where: { id: Number(id) },
+    include: incluirNomes,
   });
   return formatarTarefa(tarefa);
 }
 
 async function listarPorColuna(coluna) {
   const model = getModel();
+  const colunaBanco = mapearColunaParaBanco(coluna);
   let tarefas;
   try {
-    tarefas = await model.findMany({ where: { status: coluna } });
+    tarefas = await model.findMany({
+      where: { coluna: colunaBanco },
+      include: incluirNomes,
+    });
   } catch (e) {
-    tarefas = await model.findMany({ where: { coluna: coluna } });
+    tarefas = await model.findMany({
+      where: { status: coluna },
+      include: incluirNomes,
+    });
   }
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorUsuario(usuarioId) {
   const model = getModel();
-  let tarefas;
-  try {
-    tarefas = await model.findMany({ where: { usuario_id: Number(usuarioId) } });
-  } catch (e) {
-    tarefas = await model.findMany({ where: { usuarioId: Number(usuarioId) } });
-  }
+  const tarefas = await model.findMany({
+    where: { usuario_id: Number(usuarioId) },
+    include: incluirNomes,
+  });
   return tarefas.map(formatarTarefa);
 }
 
 async function listarPorProjeto(projetoId) {
   const model = getModel();
-  let tarefas;
-  try {
-    tarefas = await model.findMany({ where: { projeto_id: Number(projetoId) } });
-  } catch (e) {
-    tarefas = await model.findMany({ where: { projetoId: Number(projetoId) } });
-  }
+  const tarefas = await model.findMany({
+    where: { projeto_id: Number(projetoId) },
+    include: incluirNomes,
+  });
   return tarefas.map(formatarTarefa);
 }
 
 async function adicionar(dados) {
-  const { texto, coluna, usuarioId, projetoId, dataConclusao, prioridade } = dados;
+  const { texto, coluna, usuario_id, usuarioId, projeto_id, projetoId, prioridade_id, idprioridade, ordem } = dados;
 
-  const statusVal = coluna || "afazer";
-  const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
-  const uId = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : null;
+  const statusVal = mapearColunaParaBanco(coluna);
+  const pId = Number(projeto_id || projetoId) || null;
+  const uId = Number(usuario_id || usuarioId);
+  const idPrio = Number(prioridade_id || idprioridade) || 1;
+  const ord = Number(ordem) || 0;
 
-  if (!uId) {
-    throw new Error("usuarioId válido é obrigatório.");
+  if (!uId || isNaN(uId)) {
+    throw new Error("usuario_id válido é obrigatório.");
   }
 
-  // Tenta criar utilizando a convenção snake_case (usuario_id)
   try {
-    const novaTarefa = await getModel().create({
-      data: {
-        texto,
-        status: statusVal,
-        prioridade: prioridade || "media",
-        usuario_id: uId,
-        projeto_id: pId,
-        data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
-      },
-    });
-    return formatarTarefa(novaTarefa);
-  } catch (erroSnake) {
-    // Se o schema usar camelCase (usuarioId / coluna), executa o fallback automático
     const novaTarefa = await getModel().create({
       data: {
         texto,
         coluna: statusVal,
-        prioridade: prioridade || "media",
-        usuarioId: uId,
-        projetoId: pId,
-        dataConclusao: dataConclusao ? new Date(dataConclusao) : null,
+        ordem: ord,
+        prioridade_id: idPrio,
+        usuario_id: uId,
+        projeto_id: pId,
       },
+      include: incluirNomes,
     });
+
     return formatarTarefa(novaTarefa);
+  } catch (erro) {
+    if (erro.code === "P2003") {
+      const erroCustom = new Error("Um dos ids informados não existe");
+      erroCustom.statusCode = 400;
+      throw erroCustom;
+    }
+    throw erro;
   }
 }
 
 async function atualizar(id, dados) {
-  const tarefaAtual = await buscar(id);
-  if (!tarefaAtual) return null;
+  const atual = await getModel().findUnique({
+    where: { id: Number(id) },
+  });
 
-  const texto = dados.texto !== undefined ? dados.texto : tarefaAtual.texto;
-  const coluna = dados.coluna !== undefined ? dados.coluna : tarefaAtual.coluna;
-  const prioridade = dados.prioridade !== undefined ? dados.prioridade : tarefaAtual.prioridade;
-  const usuarioId = dados.usuarioId !== undefined ? dados.usuarioId : tarefaAtual.usuarioId;
-  const projetoId = dados.projetoId !== undefined ? dados.projetoId : tarefaAtual.projetoId;
-  const dataConclusao = dados.dataConclusao !== undefined ? dados.dataConclusao : tarefaAtual.dataConclusao;
+  if (!atual) return null;
 
-  const pId = projetoId && !isNaN(Number(projetoId)) ? Number(projetoId) : null;
-  const uId = usuarioId && !isNaN(Number(usuarioId)) ? Number(usuarioId) : tarefaAtual.usuarioId;
+  let iniciadaEm = atual.iniciada_em;
+  let concluidaEm = atual.concluida_em;
+
+  const colunaFrontend = dados.coluna !== undefined ? dados.coluna : mapearColunaParaFront(atual.coluna);
+  const statusVal = mapearColunaParaBanco(colunaFrontend);
+
+  if (statusVal === "doing" && !iniciadaEm) {
+    iniciadaEm = new Date();
+  }
+
+  if (statusVal === "done" && !concluidaEm) {
+    concluidaEm = new Date();
+  }
+
+  const pId = dados.projeto_id !== undefined || dados.projetoId !== undefined
+    ? Number(dados.projeto_id || dados.projetoId) || null
+    : atual.projeto_id;
+
+  const uId = dados.usuario_id !== undefined || dados.usuarioId !== undefined
+    ? Number(dados.usuario_id || dados.usuarioId)
+    : atual.usuario_id;
+
+  const idPrio = dados.prioridade_id !== undefined || dados.idprioridade !== undefined
+    ? Number(dados.prioridade_id || dados.idprioridade)
+    : atual.prioridade_id;
 
   try {
-    const tarefaAtualizada = await getModel().update({
+    const tarefa = await getModel().update({
       where: { id: Number(id) },
       data: {
-        texto,
-        status: coluna,
-        prioridade,
+        texto: dados.texto !== undefined ? dados.texto : atual.texto,
+        coluna: statusVal,
+        prioridade_id: idPrio,
         usuario_id: uId,
         projeto_id: pId,
-        data_conclusao: dataConclusao ? new Date(dataConclusao) : null,
+        iniciada_em: iniciadaEm,
+        concluida_em: concluidaEm,
       },
+      include: incluirNomes,
     });
-    return formatarTarefa(tarefaAtualizada);
+
+    return formatarTarefa(tarefa);
   } catch (erro) {
-    const tarefaAtualizada = await getModel().update({
-      where: { id: Number(id) },
-      data: {
-        texto,
-        coluna,
-        prioridade,
-        usuarioId: uId,
-        projetoId: pId,
-        dataConclusao: dataConclusao ? new Date(dataConclusao) : null,
-      },
-    });
-    return formatarTarefa(tarefaAtualizada);
+    if (erro.code === "P2003") {
+      const erroCustom = new Error("Um dos ids informados não existe");
+      erroCustom.statusCode = 400;
+      throw erroCustom;
+    }
+    throw erro;
   }
 }
 
 async function remover(id) {
-  const tarefaRemovida = await getModel().delete({
-    where: { id: Number(id) },
-  });
-  return formatarTarefa(tarefaRemovida);
+  try {
+    const tarefa = await getModel().delete({
+      where: { id: Number(id) },
+      include: incluirNomes,
+    });
+    return formatarTarefa(tarefa);
+  } catch (erro) {
+    if (erro.code === "P2025") return null;
+    throw erro;
+  }
 }
 
 module.exports = {
