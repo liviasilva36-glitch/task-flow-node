@@ -21,6 +21,14 @@ const prioridadesRoutes = require("./src/routes/prioridades.routes");
 const app = express();
 const PORTA = process.env.PORTA || 3001;
 
+
+
+
+
+const  swaggerUI = require ("swagger-ui-express");
+const openapi = require ("./src/docs/openapi");
+app.use ("/docs", swaggerUI.serve, swaggerUI.setup(openapi));
+
 // ===============================
 // MIDDLEWARES DE REQUISIÇÃO
 // ===============================
