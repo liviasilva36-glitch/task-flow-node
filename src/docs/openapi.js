@@ -14,8 +14,12 @@ module.exports = {
   },
   servers: [
     {
-      url: 'http://localhost:3001',
-      description: 'Servidor Local',
+      url: 'https://task-flow-node.vercel.app',
+    description: 'Servidor de Produção (Vercel)'
+  },
+  {
+    url: 'http://localhost:3001',
+    description: 'Servidor Local'
     },
   ],
   components: {
