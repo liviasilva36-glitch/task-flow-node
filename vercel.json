@@ -6,6 +6,11 @@
       "destination": "/api/index.js"
     }
   ],
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "prisma/schema.prisma"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

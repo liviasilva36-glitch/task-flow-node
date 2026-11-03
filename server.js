@@ -3,9 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-// Importação padrão do Prisma Client
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+// 1. Instância Singleton do Prisma para Serverless
+const prisma = require("./src/lib/prisma"); 
 
 const logger = require("./src/middlewares/logger");
 const validarContentType = require("./src/middlewares/validarContentType");
@@ -21,13 +20,20 @@ const prioridadesRoutes = require("./src/routes/prioridades.routes");
 const app = express();
 const PORTA = process.env.PORTA || 3001;
 
+// ===============================
+// SWAGGER (Ajustado para CDN Vercel)
+// ===============================
+const swaggerUI = require("swagger-ui-express");
+const openapi = require("./src/docs/openapi");
 
+const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
+const JS_BUNDLE = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js";
+const JS_PRESET = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js";
 
-
-
-const  swaggerUI = require ("swagger-ui-express");
-const openapi = require ("./src/docs/openapi");
-app.use ("/docs", swaggerUI.serve, swaggerUI.setup(openapi));
+app.use("/docs", swaggerUI.serve, swaggerUI.setup(openapi, {
+  customCssUrl: CSS_URL,
+  customJs: [JS_BUNDLE, JS_PRESET]
+}));
 
 // ===============================
 // MIDDLEWARES DE REQUISIÇÃO
@@ -47,18 +53,10 @@ const corsOptions = {
 // 1. Aplica CORS globalmente
 app.use(cors(corsOptions));
 
-// 2. Intercepta requisições OPTIONS e responde imediatamente com 200 OK para o preflight
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
 app.use(express.json());
 app.use(logger);
 
-// 3. Valida Content-Type apenas para métodos com corpo
+// 2. Valida Content-Type apenas para métodos com corpo
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     return validarContentType(req, res, next);
@@ -88,9 +86,9 @@ app.use("/prioridades", prioridadesRoutes);
 // ROTA 404 E ERROS
 // ===============================
 
-app.use((req, res) => {
+app.use((req, res, next) => {
   const rota = `${req.method} ${req.url}`;
-  throw criarErro(404, `Rota ${rota} não encontrada`);
+  next(criarErro(404, `Rota ${rota} não encontrada`));
 });
 
 app.use(tratarErros);
