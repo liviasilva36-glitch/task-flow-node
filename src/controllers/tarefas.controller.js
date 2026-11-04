@@ -91,7 +91,6 @@ const tarefasController = {
 
   async criar(req, res, next) {
     try {
-      // 1. Mapeia o texto enviado pelo formulário ou JSON
       const textoInput = req.body.texto || req.body.titulo || req.body.tarefa;
       
       const {
@@ -105,7 +104,6 @@ const tarefasController = {
         throw criarErro(400, "Texto/Título da tarefa é obrigatório");
       }
 
-      // 2. Tenta obter o usuarioId do token ou body
       const usuarioIdRaw = 
         req.usuario?.id || 
         req.body.usuarioId || 
@@ -115,7 +113,6 @@ const tarefasController = {
 
       let parsedUsuarioId = Number(usuarioIdRaw);
 
-      // Fallback defensivo: se não veio ID válido, busca o primeiro usuário do banco
       if (!usuarioIdRaw || isNaN(parsedUsuarioId)) {
         const primeiroUsuario = await getUsuariosModel().findFirst({
           orderBy: { id: "asc" },
@@ -136,11 +133,9 @@ const tarefasController = {
         }
       }
 
-      // 3. Trata projetoId: se for nulo, inválido ou NaN, mantém null
       const rawProj = projetoId || projeto_id;
       const parsedProjetoId = rawProj && !isNaN(Number(rawProj)) ? Number(rawProj) : null;
 
-      // 4. Cria a tarefa interceptando exceções de Foreign Key do Prisma / Model
       try {
         const novaTarefa = await tarefasModel.adicionar({
           texto: textoInput.trim(),
@@ -180,7 +175,7 @@ const tarefasController = {
         return res.status(404).json({ erro: "Tarefa não encontrada" });
       }
 
-      const { texto, prioridade, coluna, usuarioId, projetoId } = req.body;
+      const { texto, prioridade, prioridadeId, prioridade_id, coluna, usuarioId, usuario_id, projetoId, projeto_id } = req.body;
 
       if (coluna === "andamento" && tarefa.coluna !== "andamento") {
         const andamento = await tarefasModel.listarPorColuna("andamento");
@@ -190,15 +185,30 @@ const tarefasController = {
         }
       }
 
+      // TRATAMENTO DEFENSIVO DOS DADOS:
+      // Apenas aceita e converte para Number se o valor for um número válido (> 0). Caso contrário, ignora!
       const dadosAtualizados = {
         texto: texto ?? tarefa.texto,
-        prioridade: prioridade ?? tarefa.prioridade,
         coluna: coluna ?? tarefa.coluna,
-        usuarioId:
-          usuarioId !== undefined ? Number(usuarioId) : tarefa.usuarioId || tarefa.usuario_id,
-        projetoId:
-          projetoId !== undefined ? Number(projetoId) : tarefa.projetoId || tarefa.projeto_id,
       };
+
+      // Usuário
+      const rawUser = usuarioId ?? usuario_id;
+      if (rawUser !== undefined && rawUser !== null && !isNaN(Number(rawUser)) && Number(rawUser) > 0) {
+        dadosAtualizados.usuarioId = Number(rawUser);
+      }
+
+      // Prioridade
+      const rawPrio = prioridadeId ?? prioridade_id ?? prioridade;
+      if (rawPrio !== undefined && rawPrio !== null && !isNaN(Number(rawPrio)) && Number(rawPrio) > 0) {
+        dadosAtualizados.prioridadeId = Number(rawPrio);
+      }
+
+      // Projeto
+      const rawProj = projetoId ?? projeto_id;
+      if (rawProj !== undefined) {
+        dadosAtualizados.projetoId = (rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0) ? Number(rawProj) : null;
+      }
 
       if (coluna === "concluido" && tarefa.coluna !== "concluido") {
         dadosAtualizados.dataConclusao = new Date().toISOString();
