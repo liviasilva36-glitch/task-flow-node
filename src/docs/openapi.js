@@ -1,7 +1,7 @@
 const { schemas: schemasComum } = require('./comum');
 const tarefasDocs = require('./tarefas.docs');
 const authDocs = require('./auth.docs');
-const prioridadesDocs = require('./prioridades'); // O './prioridades.docs' si has canviat el nom del fitxer
+const prioridadesDocs = require('./prioridades');
 const usuariosDocs = require('./usuarios.docs');
 const projetosDocs = require('./projetos.docs');
 
@@ -14,13 +14,9 @@ module.exports = {
   },
   servers: [
     {
-      url: 'https://task-flow-node.vercel.app',
-    description: 'Servidor de Produção (Vercel)'
-  },
-  {
-    url: 'http://localhost:3001',
-    description: 'Servidor Local'
-    },
+      url: '/',
+      description: 'Servidor Actual (Relatiu)'
+    }
   ],
   components: {
     securitySchemes: {
