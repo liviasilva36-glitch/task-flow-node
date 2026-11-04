@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const prioridadesModel = require("../models/prioridades.model");
 
-
+// GET /prioridades/estatisticas
 router.get("/estatisticas", async (req, res) => {
     try {
         const estatisticas = await prioridadesModel.contarTarefasPorPrioridade();
@@ -23,7 +23,5 @@ router.get("/", async (req, res) => {
         res.status(500).json({ erro: "Erro ao buscar prioridades" });
     }
 });
-
-// GET /prioridades/estatisticas
 
 module.exports = router;

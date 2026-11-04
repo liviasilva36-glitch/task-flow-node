@@ -18,7 +18,7 @@ function mapearColunaParaFront(coluna) {
 // Converte do Frontend/Postman para a constraint do Banco de Dados
 function mapearColunaParaBanco(coluna) {
   if (!coluna) return "todo";
-  const c = coluna.toLowerCase();
+  const c = String(coluna).toLowerCase();
   if (c === "afazer" || c === "a_fazer" || c === "todo") return "todo";
   if (c === "andamento" || c === "em_andamento" || c === "doing") return "doing";
   if (c === "concluido" || c === "concluida" || c === "done") return "done";
@@ -102,16 +102,25 @@ async function listarPorProjeto(projetoId) {
 }
 
 async function adicionar(dados) {
-  const { texto, coluna, usuario_id, usuarioId, projeto_id, projetoId, prioridade_id, idprioridade, ordem } = dados;
+  const { texto, coluna, usuario_id, usuarioId, projeto_id, projetoId, prioridade_id, prioridadeId, idprioridade, ordem } = dados;
 
   const statusVal = mapearColunaParaBanco(coluna);
-  const pId = Number(projeto_id || projetoId) || null;
-  const uId = Number(usuario_id || usuarioId);
-  const idPrio = Number(prioridade_id || idprioridade) || 1;
+  
+  const rawPId = projeto_id ?? projetoId;
+  const pId = rawPId && !isNaN(Number(rawPId)) ? Number(rawPId) : null;
+
+  const rawUId = usuario_id ?? usuarioId;
+  const uId = rawUId && !isNaN(Number(rawUId)) ? Number(rawUId) : null;
+
+  const rawPrioId = prioridade_id ?? prioridadeId ?? idprioridade;
+  const idPrio = rawPrioId && !isNaN(Number(rawPrioId)) ? Number(rawPrioId) : 1;
+
   const ord = Number(ordem) || 0;
 
-  if (!uId || isNaN(uId)) {
-    throw new Error("usuario_id válido é obrigatório.");
+  if (!uId) {
+    const erroCustom = new Error("usuario_id válido é obrigatório.");
+    erroCustom.statusCode = 400;
+    throw erroCustom;
   }
 
   try {
@@ -139,8 +148,11 @@ async function adicionar(dados) {
 }
 
 async function atualizar(id, dados) {
+  const idNum = Number(id);
+  if (isNaN(idNum)) return null;
+
   const atual = await getModel().findUnique({
-    where: { id: Number(id) },
+    where: { id: idNum },
   });
 
   if (!atual) return null;
@@ -159,21 +171,38 @@ async function atualizar(id, dados) {
     concluidaEm = new Date();
   }
 
-  const pId = dados.projeto_id !== undefined || dados.projetoId !== undefined
-    ? Number(dados.projeto_id || dados.projetoId) || null
-    : atual.projeto_id;
+  // Resolução segura de projeto_id (suporta camelCase e snake_case)
+  let pId = atual.projeto_id;
+  if (dados.projeto_id !== undefined || dados.projetoId !== undefined) {
+    const valorProj = dados.projeto_id ?? dados.projetoId;
+    pId = valorProj && !isNaN(Number(valorProj)) ? Number(valorProj) : null;
+  }
 
-  const uId = dados.usuario_id !== undefined || dados.usuarioId !== undefined
-    ? Number(dados.usuario_id || dados.usuarioId)
-    : atual.usuario_id;
+  // Resolução segura de usuario_id
+  let uId = atual.usuario_id;
+  if (dados.usuario_id !== undefined || dados.usuarioId !== undefined) {
+    const valorUser = dados.usuario_id ?? dados.usuarioId;
+    if (valorUser && !isNaN(Number(valorUser))) {
+      uId = Number(valorUser);
+    }
+  }
 
-  const idPrio = dados.prioridade_id !== undefined || dados.idprioridade !== undefined
-    ? Number(dados.prioridade_id || dados.idprioridade)
-    : atual.prioridade_id;
+  // Resolução segura de prioridade_id
+  let idPrio = atual.prioridade_id;
+  if (dados.prioridade_id !== undefined || dados.prioridadeId !== undefined || dados.idprioridade !== undefined) {
+    const valorPrio = dados.prioridade_id ?? dados.prioridadeId ?? dados.idprioridade;
+    if (valorPrio && !isNaN(Number(valorPrio))) {
+      idPrio = Number(valorPrio);
+    }
+  }
+
+  // Fallback para evitar enviar valor nulo ou NaN em prioridade/usuario
+  if (!idPrio || isNaN(idPrio)) idPrio = 1;
+  if (!uId || isNaN(uId)) uId = atual.usuario_id;
 
   try {
     const tarefa = await getModel().update({
-      where: { id: Number(id) },
+      where: { id: idNum },
       data: {
         texto: dados.texto !== undefined ? dados.texto : atual.texto,
         coluna: statusVal,

@@ -1,8 +1,9 @@
 const prisma = require("../database/db"); 
+
 const prioridade = {
     // 1. Listar todas as prioridades ordenadas por ID
     listar: async () => {
-        return await prisma.prioridades.findMany({
+        const prioridades = await prisma.prioridades.findMany({
             select: {
                 id: true,
                 nome: true,
@@ -11,6 +12,12 @@ const prioridade = {
                 id: 'asc',
             },
         });
+
+        // Garantia de normalização dos nomes para minúsculas
+        return prioridades.map(p => ({
+            id: p.id,
+            nome: p.nome.toLowerCase()
+        }));
     },
 
     // 2. Contar a quantidade de tarefas por prioridade
@@ -32,7 +39,7 @@ const prioridade = {
 
         return resultado.map((p) => ({
             id: p.id,
-            nome: p.nome,
+            nome: p.nome.toLowerCase(),
             quantidade_tarefas: p._count.tarefas,
         }));
     },
