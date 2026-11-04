@@ -151,6 +151,7 @@ async function atualizar(id, dados) {
   const idNum = Number(id);
   if (isNaN(idNum)) return null;
 
+  // Busca o registo existente no banco
   const atual = await getModel().findUnique({
     where: { id: idNum },
   });
@@ -171,34 +172,24 @@ async function atualizar(id, dados) {
     concluidaEm = new Date();
   }
 
-  // Resolução segura de projeto_id (suporta camelCase e snake_case)
-  let pId = atual.projeto_id;
-  if (dados.projeto_id !== undefined || dados.projetoId !== undefined) {
-    const valorProj = dados.projeto_id ?? dados.projetoId;
-    pId = valorProj && !isNaN(Number(valorProj)) ? Number(valorProj) : null;
-  }
-
-  // Resolução segura de usuario_id
-  let uId = atual.usuario_id;
-  if (dados.usuario_id !== undefined || dados.usuarioId !== undefined) {
-    const valorUser = dados.usuario_id ?? dados.usuarioId;
-    if (valorUser && !isNaN(Number(valorUser))) {
-      uId = Number(valorUser);
-    }
-  }
-
-  // Resolução segura de prioridade_id
+  // MANTÉM OS IDs EXISTENTES se o payload não enviar novos números válidos (> 0)
   let idPrio = atual.prioridade_id;
-  if (dados.prioridade_id !== undefined || dados.prioridadeId !== undefined || dados.idprioridade !== undefined) {
-    const valorPrio = dados.prioridade_id ?? dados.prioridadeId ?? dados.idprioridade;
-    if (valorPrio && !isNaN(Number(valorPrio))) {
-      idPrio = Number(valorPrio);
-    }
+  const rawPrio = dados.prioridade_id ?? dados.prioridadeId ?? dados.idprioridade;
+  if (rawPrio !== undefined && rawPrio !== null && !isNaN(Number(rawPrio)) && Number(rawPrio) > 0) {
+    idPrio = Number(rawPrio);
   }
 
-  // Fallback para evitar enviar valor nulo ou NaN em prioridade/usuario
-  if (!idPrio || isNaN(idPrio)) idPrio = 1;
-  if (!uId || isNaN(uId)) uId = atual.usuario_id;
+  let uId = atual.usuario_id;
+  const rawUser = dados.usuario_id ?? dados.usuarioId;
+  if (rawUser !== undefined && rawUser !== null && !isNaN(Number(rawUser)) && Number(rawUser) > 0) {
+    uId = Number(rawUser);
+  }
+
+  let pId = atual.projeto_id;
+  const rawProj = dados.projeto_id ?? dados.projetoId;
+  if (rawProj !== undefined) {
+    pId = (rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0) ? Number(rawProj) : null;
+  }
 
   try {
     const tarefa = await getModel().update({
