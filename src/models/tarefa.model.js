@@ -1,31 +1,50 @@
+
 const prisma = require("../database/db");
 
-// Objeto de inclusão exato com base no schema.prisma
+// Relacionamentos incluídos nas consultas
 const incluirNomes = {
-  projetos: { select: { nome: true } },
-  usuarios: { select: { nome: true } },
-  prioridades: { select: { nome: true } },
+  projetos: {
+    select: { nome: true },
+  },
+  usuarios: {
+    select: { nome: true },
+  },
+  prioridades: {
+    select: { nome: true },
+  },
 };
 
-// Converte do valor da base de dados (todo/doing/done) para o padrão do Frontend (afazer/andamento/concluido)
+// Converte a coluna do banco para o padrão do frontend
 function mapearColunaParaFront(coluna) {
   if (coluna === "todo") return "afazer";
   if (coluna === "doing") return "andamento";
   if (coluna === "done") return "concluido";
+
   return coluna || "afazer";
 }
 
-// Converte do Frontend/Postman para a constraint do Banco de Dados
+// Converte a coluna do frontend para o padrão do banco
 function mapearColunaParaBanco(coluna) {
   if (!coluna) return "todo";
+
   const c = String(coluna).toLowerCase();
-  if (c === "afazer" || c === "a_fazer" || c === "todo") return "todo";
-  if (c === "andamento" || c === "em_andamento" || c === "doing") return "doing";
-  if (c === "concluido" || c === "concluida" || c === "done") return "done";
+
+  if (["afazer", "a_fazer", "todo"].includes(c)) {
+    return "todo";
+  }
+
+  if (["andamento", "em_andamento", "doing"].includes(c)) {
+    return "doing";
+  }
+
+  if (["concluido", "concluida", "done"].includes(c)) {
+    return "done";
+  }
+
   return c;
 }
 
-// Formata a tarefa devolvendo estritamente os campos necessários em camelCase sem duplicações
+// Formata os dados devolvidos ao frontend
 function formatarTarefa(tarefa) {
   if (!tarefa) return null;
 
@@ -34,91 +53,145 @@ function formatarTarefa(tarefa) {
     texto: tarefa.texto,
     coluna: mapearColunaParaFront(tarefa.coluna || tarefa.status),
     ordem: tarefa.ordem ?? 0,
-    usuarioId: tarefa.usuario_id || tarefa.usuarioId,
-    projetoId: tarefa.projeto_id || tarefa.projetoId || null,
-    prioridadeId: tarefa.prioridade_id || tarefa.prioridadeId || 1,
+
+    usuarioId: tarefa.usuario_id ?? tarefa.usuarioId,
+    projetoId: tarefa.projeto_id ?? tarefa.projetoId ?? null,
+    prioridadeId: tarefa.prioridade_id ?? tarefa.prioridadeId ?? 1,
+
     usuario: tarefa.usuarios?.nome || tarefa.usuario || null,
     projeto: tarefa.projetos?.nome || tarefa.projeto || null,
     prioridade: tarefa.prioridades?.nome || tarefa.prioridade || "Média",
+
     criadoEm: tarefa.criado_em || tarefa.data_criacao,
     iniciadaEm: tarefa.iniciada_em || tarefa.data_inicio,
     concluidaEm: tarefa.concluida_em || tarefa.data_conclusao,
   };
 }
 
-// Retorna o modelo do Prisma
+// Obtém o model de tarefas do Prisma
 const getModel = () => prisma.tarefa || prisma.tarefas;
 
+// Lista todas as tarefas
 async function listar() {
   const tarefas = await getModel().findMany({
     orderBy: { id: "asc" },
     include: incluirNomes,
   });
+
   return tarefas.map(formatarTarefa);
 }
 
+// Busca uma tarefa pelo ID
 async function buscar(id) {
   const tarefa = await getModel().findUnique({
     where: { id: Number(id) },
     include: incluirNomes,
   });
+
   return formatarTarefa(tarefa);
 }
 
+// Lista tarefas por coluna
 async function listarPorColuna(coluna) {
   const model = getModel();
   const colunaBanco = mapearColunaParaBanco(coluna);
+
   let tarefas;
+
   try {
     tarefas = await model.findMany({
       where: { coluna: colunaBanco },
       include: incluirNomes,
     });
-  } catch (e) {
+  } catch (erro) {
     tarefas = await model.findMany({
       where: { status: coluna },
       include: incluirNomes,
     });
   }
+
   return tarefas.map(formatarTarefa);
 }
 
+// Lista tarefas por usuário
 async function listarPorUsuario(usuarioId) {
-  const model = getModel();
-  const tarefas = await model.findMany({
+  const tarefas = await getModel().findMany({
     where: { usuario_id: Number(usuarioId) },
     include: incluirNomes,
   });
+
   return tarefas.map(formatarTarefa);
 }
 
+// Lista tarefas por projeto
 async function listarPorProjeto(projetoId) {
-  const model = getModel();
-  const tarefas = await model.findMany({
+  const tarefas = await getModel().findMany({
     where: { projeto_id: Number(projetoId) },
     include: incluirNomes,
   });
+
   return tarefas.map(formatarTarefa);
 }
 
+// CRIAR TAREFA
 async function adicionar(dados) {
-  const { texto, coluna, usuario_id, usuarioId, projeto_id, projetoId, prioridade_id, prioridadeId, idprioridade, ordem } = dados;
+  const {
+    texto,
+    coluna,
+    usuario_id,
+    usuarioId,
+    projeto_id,
+    projetoId,
+    prioridade_id,
+    prioridadeId,
+    idprioridade,
+    id_prioridade,
+    ordem,
+  } = dados;
 
   const statusVal = mapearColunaParaBanco(coluna);
-  
+
+  // ID do projeto
   const rawPId = projeto_id ?? projetoId;
-  const pId = rawPId && !isNaN(Number(rawPId)) ? Number(rawPId) : null;
 
+  const pId =
+    rawPId && !isNaN(Number(rawPId))
+      ? Number(rawPId)
+      : null;
+
+  // ID do usuário
   const rawUId = usuario_id ?? usuarioId;
-  const uId = rawUId && !isNaN(Number(rawUId)) ? Number(rawUId) : null;
 
-  const rawPrioId = prioridade_id ?? prioridadeId ?? idprioridade;
-  const idPrio = rawPrioId && !isNaN(Number(rawPrioId)) ? Number(rawPrioId) : 1;
+  const uId =
+    rawUId && !isNaN(Number(rawUId))
+      ? Number(rawUId)
+      : null;
+
+  // ID da prioridade
+  const rawPrioId =
+    prioridade_id ??
+    prioridadeId ??
+    idprioridade ??
+    id_prioridade;
+
+  const idPrio = Number(rawPrioId);
 
   const ord = Number(ordem) || 0;
 
   if (!uId) {
-    const erroCustom = new Error("usuario_id válido é obrigatório.");
+    const erroCustom = new Error(
+      "usuario_id válido é obrigatório."
+    );
+
+    erroCustom.statusCode = 400;
+    throw erroCustom;
+  }
+
+  if (![1, 2, 3].includes(idPrio)) {
+    const erroCustom = new Error(
+      "ID de prioridade inválido."
+    );
+
     erroCustom.statusCode = 400;
     throw erroCustom;
   }
@@ -128,7 +201,7 @@ async function adicionar(dados) {
       data: {
         texto,
         coluna: statusVal,
-        ordem: ord,
+        ordem,
         prioridade_id: idPrio,
         usuario_id: uId,
         projeto_id: pId,
@@ -137,21 +210,28 @@ async function adicionar(dados) {
     });
 
     return formatarTarefa(novaTarefa);
+
   } catch (erro) {
     if (erro.code === "P2003") {
-      const erroCustom = new Error("Um dos ids informados não existe");
+      const erroCustom = new Error(
+        "Um dos ids informados não existe"
+      );
+
       erroCustom.statusCode = 400;
       throw erroCustom;
     }
+
     throw erro;
   }
 }
 
+// ATUALIZAR TAREFA
 async function atualizar(id, dados) {
   const idNum = Number(id);
+
   if (isNaN(idNum)) return null;
 
-  // Busca o registo existente no banco
+  // Busca a tarefa atual
   const atual = await getModel().findUnique({
     where: { id: idNum },
   });
@@ -161,7 +241,11 @@ async function atualizar(id, dados) {
   let iniciadaEm = atual.iniciada_em;
   let concluidaEm = atual.concluida_em;
 
-  const colunaFrontend = dados.coluna !== undefined ? dados.coluna : mapearColunaParaFront(atual.coluna);
+  const colunaFrontend =
+    dados.coluna !== undefined
+      ? dados.coluna
+      : mapearColunaParaFront(atual.coluna);
+
   const statusVal = mapearColunaParaBanco(colunaFrontend);
 
   if (statusVal === "doing" && !iniciadaEm) {
@@ -172,30 +256,63 @@ async function atualizar(id, dados) {
     concluidaEm = new Date();
   }
 
-  // MANTÉM OS IDs EXISTENTES se o payload não enviar novos números válidos (> 0)
+  // Mantém a prioridade atual quando nenhuma nova for enviada
   let idPrio = atual.prioridade_id;
-  const rawPrio = dados.prioridade_id ?? dados.prioridadeId ?? dados.idprioridade;
-  if (rawPrio !== undefined && rawPrio !== null && !isNaN(Number(rawPrio)) && Number(rawPrio) > 0) {
-    idPrio = Number(rawPrio);
+
+  const rawPrio =
+    dados.prioridade_id ??
+    dados.prioridadeId ??
+    dados.idprioridade ??
+    dados.id_prioridade;
+
+  if (rawPrio !== undefined && rawPrio !== null && rawPrio !== "") {
+    const novaPrioridade = Number(rawPrio);
+
+    if (![1, 2, 3].includes(novaPrioridade)) {
+      const erroCustom = new Error("ID de prioridade inválido.");
+      erroCustom.statusCode = 400;
+      throw erroCustom;
+    }
+
+    idPrio = novaPrioridade;
   }
 
+  // Mantém o usuário atual quando nenhum novo for enviado
   let uId = atual.usuario_id;
+
   const rawUser = dados.usuario_id ?? dados.usuarioId;
-  if (rawUser !== undefined && rawUser !== null && !isNaN(Number(rawUser)) && Number(rawUser) > 0) {
+
+  if (
+    rawUser !== undefined &&
+    rawUser !== null &&
+    !isNaN(Number(rawUser)) &&
+    Number(rawUser) > 0
+  ) {
     uId = Number(rawUser);
   }
 
+  // Mantém ou atualiza o projeto
   let pId = atual.projeto_id;
+
   const rawProj = dados.projeto_id ?? dados.projetoId;
+
   if (rawProj !== undefined) {
-    pId = (rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0) ? Number(rawProj) : null;
+    pId =
+      rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0
+        ? Number(rawProj)
+        : null;
   }
 
   try {
     const tarefa = await getModel().update({
       where: { id: idNum },
+
       data: {
-        texto: dados.texto !== undefined ? dados.texto : atual.texto,
+        texto:
+          dados.texto !== undefined
+            ? dados.texto
+            : atual.texto,
+
         coluna: statusVal,
         prioridade_id: idPrio,
         usuario_id: uId,
@@ -203,29 +320,41 @@ async function atualizar(id, dados) {
         iniciada_em: iniciadaEm,
         concluida_em: concluidaEm,
       },
+
       include: incluirNomes,
     });
 
     return formatarTarefa(tarefa);
+
   } catch (erro) {
     if (erro.code === "P2003") {
-      const erroCustom = new Error("Um dos ids informados não existe");
+      const erroCustom = new Error(
+        "Um dos ids informados não existe"
+      );
+
       erroCustom.statusCode = 400;
       throw erroCustom;
     }
+
     throw erro;
   }
 }
 
+// REMOVER TAREFA
 async function remover(id) {
   try {
     const tarefa = await getModel().delete({
       where: { id: Number(id) },
       include: incluirNomes,
     });
+
     return formatarTarefa(tarefa);
+
   } catch (erro) {
-    if (erro.code === "P2025") return null;
+    if (erro.code === "P2025") {
+      return null;
+    }
+
     throw erro;
   }
 }

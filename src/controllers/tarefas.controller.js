@@ -1,13 +1,38 @@
+
 const tarefasModel = require("../models/tarefa.model");
 const criarErro = require("../ultils/criarErro");
-const prisma = require('../database/db');
+const prisma = require("../database/db");
 
 const prioridadesValidas = ["baixa", "media", "alta"];
 const colunasValidas = ["afazer", "andamento", "concluido"];
 const LIMITE_ANDAMENTO = 5;
 
-// Função auxiliar para obter a instância do model de usuários
+// Obtém o model de usuários
 const getUsuariosModel = () => prisma.usuario || prisma.usuarios;
+
+// Converte o nome da prioridade para o ID correspondente
+function obterIdPrioridade(valor) {
+  if (valor !== undefined && valor !== null && valor !== "") {
+    const numero = Number(valor);
+
+    if (Number.isInteger(numero) && numero > 0) {
+      return numero;
+    }
+  }
+
+  const nome = String(valor || "media")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const prioridades = {
+    baixa: 1,
+    media: 2,
+    alta: 3,
+  };
+
+  return prioridades[nome] || null;
+}
 
 const tarefasController = {
   async listar(req, res, next) {
@@ -15,6 +40,7 @@ const tarefasController = {
       const { coluna, usuarioId, projetoId } = req.query;
 
       let resultado;
+
       if (coluna) {
         resultado = await tarefasModel.listarPorColuna(coluna);
       } else if (usuarioId) {
@@ -57,6 +83,7 @@ const tarefasController = {
   async resumo(req, res, next) {
     try {
       const tarefas = await tarefasModel.listar();
+
       const total = tarefas.length;
       const concluido = tarefas.filter((t) => t.coluna === "concluido").length;
       const andamento = tarefas.filter((t) => t.coluna === "andamento").length;
@@ -89,31 +116,64 @@ const tarefasController = {
     }
   },
 
+  // CRIAR TAREFA
   async criar(req, res, next) {
     try {
-      const textoInput = req.body.texto || req.body.titulo || req.body.tarefa;
-      
+      const textoInput =
+        req.body.texto ||
+        req.body.titulo ||
+        req.body.tarefa;
+
       const {
         prioridade = "media",
         coluna = "afazer",
         projetoId,
-        projeto_id
+        projeto_id,
       } = req.body;
 
       if (!textoInput || !textoInput.trim()) {
         throw criarErro(400, "Texto/Título da tarefa é obrigatório");
       }
 
-      const usuarioIdRaw = 
-        req.usuario?.id || 
-        req.body.usuarioId || 
-        req.body.usuario_id || 
-        req.body.usuario || 
+      if (!colunasValidas.includes(coluna)) {
+        throw criarErro(400, "Coluna inválida");
+      }
+
+      // Recebe o ID da prioridade enviado pelo frontend
+      const prioridadeRecebida =
+        req.body.prioridadeId ??
+        req.body.prioridade_id ??
+        req.body.idprioridade ??
+        req.body.id_prioridade;
+
+      const parsedPrioridadeId =
+        obterIdPrioridade(prioridadeRecebida ?? prioridade);
+
+      if (
+        !parsedPrioridadeId ||
+        !prioridadesValidas.includes(
+          String(prioridadeRecebida ?? prioridade)
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+        ) &&
+        prioridadeRecebida == null &&
+        ![1, 2, 3].includes(parsedPrioridadeId)
+      ) {
+        throw criarErro(400, "Selecione uma prioridade válida");
+      }
+
+      // Identifica o responsável
+      const usuarioIdRaw =
+        req.usuario?.id ||
+        req.body.usuarioId ||
+        req.body.usuario_id ||
+        req.body.usuario ||
         req.body.responsavelId;
 
       let parsedUsuarioId = Number(usuarioIdRaw);
 
-      if (!usuarioIdRaw || isNaN(parsedUsuarioId)) {
+      if (!usuarioIdRaw || !Number.isInteger(parsedUsuarioId) || parsedUsuarioId <= 0) {
         const primeiroUsuario = await getUsuariosModel().findFirst({
           orderBy: { id: "asc" },
         });
@@ -125,91 +185,148 @@ const tarefasController = {
         }
       }
 
+      // Verifica limite de tarefas em andamento
       if (coluna === "andamento") {
         const andamento = await tarefasModel.listarPorColuna("andamento");
 
         if (andamento.length >= LIMITE_ANDAMENTO) {
-          throw criarErro(409, `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`);
+          throw criarErro(
+            409,
+            `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`
+          );
         }
       }
 
-      const rawProj = projetoId || projeto_id;
-      const parsedProjetoId = rawProj && !isNaN(Number(rawProj)) ? Number(rawProj) : null;
+      // Projeto
+      const rawProj = projetoId ?? projeto_id;
 
-      try {
-        const novaTarefa = await tarefasModel.adicionar({
-          texto: textoInput.trim(),
-          prioridade,
-          coluna,
-          usuarioId: parsedUsuarioId,
-          projetoId: parsedProjetoId,
-          dataConclusao: coluna === "concluido" ? new Date().toISOString() : null,
-        });
+      const parsedProjetoId =
+        rawProj && !isNaN(Number(rawProj))
+          ? Number(rawProj)
+          : null;
 
-        return res.status(201).json(novaTarefa);
-      } catch (prismaErro) {
-        if (
-          prismaErro.code === 'P2003' || 
-          prismaErro.statusCode === 400 || 
-          prismaErro.message === "Um dos ids informados não existe" ||
-          prismaErro.message?.includes('Foreign key constraint')
-        ) {
-          throw criarErro(400, "Um dos ids informados não existe");
-        }
-        throw prismaErro;
-      }
+      // Cria a tarefa com o ID correto da prioridade
+      const novaTarefa = await tarefasModel.adicionar({
+        texto: textoInput.trim(),
+        prioridade,
+        prioridadeId: parsedPrioridadeId,
+        coluna,
+        usuarioId: parsedUsuarioId,
+        projetoId: parsedProjetoId,
+        dataConclusao:
+          coluna === "concluido"
+            ? new Date().toISOString()
+            : null,
+      });
+
+      return res.status(201).json(novaTarefa);
+
     } catch (erro) {
-      if (erro.statusCode === 400 || erro.message === "Um dos ids informados não existe") {
-        return res.status(400).json({ erro: erro.message });
+      if (
+        erro.statusCode === 400 ||
+        erro.code === "P2003" ||
+        erro.message === "Um dos ids informados não existe"
+      ) {
+        return res.status(400).json({
+          erro: erro.message,
+        });
       }
+
       next(erro);
     }
   },
 
+  // ATUALIZAR TAREFA
   async atualizar(req, res, next) {
     try {
       const id = Number(req.params.id);
       const tarefa = await tarefasModel.buscar(id);
 
       if (!tarefa) {
-        return res.status(404).json({ erro: "Tarefa não encontrada" });
+        return res.status(404).json({
+          erro: "Tarefa não encontrada",
+        });
       }
 
-      const { texto, prioridade, prioridadeId, prioridade_id, coluna, usuarioId, usuario_id, projetoId, projeto_id } = req.body;
+      const {
+        texto,
+        coluna,
+        usuarioId,
+        usuario_id,
+        projetoId,
+        projeto_id,
+      } = req.body;
 
+      if (coluna && !colunasValidas.includes(coluna)) {
+        throw criarErro(400, "Coluna inválida");
+      }
+
+      // Verifica limite de tarefas em andamento
       if (coluna === "andamento" && tarefa.coluna !== "andamento") {
         const andamento = await tarefasModel.listarPorColuna("andamento");
 
         if (andamento.length >= LIMITE_ANDAMENTO) {
-          throw criarErro(409, `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`);
+          throw criarErro(
+            409,
+            `Limite de ${LIMITE_ANDAMENTO} tarefas em andamento atingido`
+          );
         }
       }
 
-      // TRATAMENTO DEFENSIVO DOS DADOS:
-      // Apenas aceita e converte para Number se o valor for um número válido (> 0). Caso contrário, ignora!
       const dadosAtualizados = {
         texto: texto ?? tarefa.texto,
         coluna: coluna ?? tarefa.coluna,
       };
 
-      // Usuário
+      // Atualiza usuário
       const rawUser = usuarioId ?? usuario_id;
-      if (rawUser !== undefined && rawUser !== null && !isNaN(Number(rawUser)) && Number(rawUser) > 0) {
+
+      if (
+        rawUser !== undefined &&
+        rawUser !== null &&
+        !isNaN(Number(rawUser)) &&
+        Number(rawUser) > 0
+      ) {
         dadosAtualizados.usuarioId = Number(rawUser);
       }
 
-      // Prioridade
-      const rawPrio = prioridadeId ?? prioridade_id ?? prioridade;
-      if (rawPrio !== undefined && rawPrio !== null && !isNaN(Number(rawPrio)) && Number(rawPrio) > 0) {
-        dadosAtualizados.prioridadeId = Number(rawPrio);
+      // Atualiza prioridade
+      const rawPrio =
+        req.body.prioridadeId ??
+        req.body.prioridade_id ??
+        req.body.idprioridade ??
+        req.body.id_prioridade;
+
+      if (rawPrio !== undefined && rawPrio !== null && rawPrio !== "") {
+        const prioridadeId = obterIdPrioridade(rawPrio);
+
+        if (!prioridadeId) {
+          throw criarErro(400, "Prioridade inválida");
+        }
+
+        dadosAtualizados.prioridadeId = prioridadeId;
+      } else if (req.body.prioridade !== undefined) {
+        // Compatibilidade com requisições que enviam apenas o nome
+        const prioridadeId = obterIdPrioridade(req.body.prioridade);
+
+        if (!prioridadeId) {
+          throw criarErro(400, "Prioridade inválida");
+        }
+
+        dadosAtualizados.prioridadeId = prioridadeId;
       }
 
-      // Projeto
+      // Atualiza projeto
       const rawProj = projetoId ?? projeto_id;
+
       if (rawProj !== undefined) {
-        dadosAtualizados.projetoId = (rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0) ? Number(rawProj) : null;
+        dadosAtualizados.projetoId =
+          rawProj && !isNaN(Number(rawProj)) && Number(rawProj) > 0
+            ? Number(rawProj)
+            : null;
       }
 
+      // Datas de início e conclusão
       if (coluna === "concluido" && tarefa.coluna !== "concluido") {
         dadosAtualizados.dataConclusao = new Date().toISOString();
       }
@@ -218,23 +335,33 @@ const tarefasController = {
         dadosAtualizados.dataConclusao = null;
       }
 
-      try {
-        const atualizada = await tarefasModel.atualizar(id, dadosAtualizados);
-        return res.json(atualizada);
-      } catch (errAtualizar) {
-        if (
-          errAtualizar.code === 'P2003' || 
-          errAtualizar.statusCode === 400 || 
-          errAtualizar.message === "Um dos ids informados não existe"
-        ) {
-          return res.status(400).json({ erro: "Um dos ids informados não existe" });
-        }
-        throw errAtualizar;
-      }
+      const atualizada = await tarefasModel.atualizar(
+        id,
+        dadosAtualizados
+      );
+
+      return res.json(atualizada);
+
     } catch (erro) {
-      if (erro.statusCode === 404 || erro.message === "Tarefa não encontrada") {
-        return res.status(404).json({ erro: "Tarefa não encontrada" });
+      if (
+        erro.statusCode === 400 ||
+        erro.code === "P2003" ||
+        erro.message === "Um dos ids informados não existe"
+      ) {
+        return res.status(400).json({
+          erro: erro.message,
+        });
       }
+
+      if (
+        erro.statusCode === 404 ||
+        erro.message === "Tarefa não encontrada"
+      ) {
+        return res.status(404).json({
+          erro: "Tarefa não encontrada",
+        });
+      }
+
       next(erro);
     }
   },
@@ -245,14 +372,22 @@ const tarefasController = {
       const removida = await tarefasModel.remover(id);
 
       if (!removida) {
-        return res.status(404).json({ erro: "Tarefa não encontrada" });
+        return res.status(404).json({
+          erro: "Tarefa não encontrada",
+        });
       }
 
       return res.status(200).json(removida);
     } catch (erro) {
-      if (erro.statusCode === 404 || erro.message === "Tarefa não encontrada") {
-        return res.status(404).json({ erro: "Tarefa não encontrada" });
+      if (
+        erro.statusCode === 404 ||
+        erro.message === "Tarefa não encontrada"
+      ) {
+        return res.status(404).json({
+          erro: "Tarefa não encontrada",
+        });
       }
+
       next(erro);
     }
   },
