@@ -1,4 +1,3 @@
-
 const prisma = require("../database/db");
 
 // Relacionamentos incluídos nas consultas
@@ -10,7 +9,7 @@ const incluirNomes = {
     select: { nome: true },
   },
   prioridades: {
-    select: { nome: true },
+    select: { nome: true, descrição: true, cor: true },
   },
 };
 
@@ -60,7 +59,8 @@ function formatarTarefa(tarefa) {
 
     usuario: tarefa.usuarios?.nome || tarefa.usuario || null,
     projeto: tarefa.projetos?.nome || tarefa.projeto || null,
-    prioridade: tarefa.prioridades?.nome || tarefa.prioridade || "Média",
+    prioridade: tarefa.prioridades?.descrição || tarefa.prioridade || "Média",
+    prioridade_cor: tarefa.prioridades?.cor || tarefa.prioridade_cor || "#ccc",
 
     criadoEm: tarefa.criado_em || tarefa.data_criacao,
     iniciadaEm: tarefa.iniciada_em || tarefa.data_inicio,
@@ -201,7 +201,7 @@ async function adicionar(dados) {
       data: {
         texto,
         coluna: statusVal,
-        ordem,
+        ordem: ord,
         prioridade_id: idPrio,
         usuario_id: uId,
         projeto_id: pId,
