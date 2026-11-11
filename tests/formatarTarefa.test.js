@@ -30,3 +30,23 @@ test ("achata as relações no formato que o fornt espera", () => {
         concluidaEm: null
     });
 });
+
+test ( "deixa o campo undefined quando não existe relação " ,() =>{
+    const tarefa = tarefaDoPrisma();
+    delete tarefa.prioridades;
+    const resultado = formatarTarefa(tarefa);
+    expect(resultado.prioridade).toBeUndefined();
+    expect(resultado.projeto).toBe("taskflow");
+});
+    
+test (  "não altera o campo principal" ,() =>{
+    const tarefa = tarefaDoPrisma();
+    delete tarefa.prioridades;
+    const resultado = formatarTarefa(tarefa);
+    expect(resultado).not.toBe(tarefa);
+    expect(tarefa).toBeProperty("projetos", {nome: "projeto teste"});
+});
+   test ("limpa os campos de relçao quando não existe ", () => {
+    expect() => formatarTarefa({ null}).toThorow(TypeError);
+   });
+    
