@@ -1,5 +1,4 @@
-const criarErro = require('./src/utils/criarErro');
-
+const criarErro = require('../src/ultils/criarErro'); // com 'l' duplo
 describe('Testes da função criar erro', () => {
     test('devolve um erro com o status e a mensagem', () => {
         const erro = criarErro(404, 'Tarefa não encontrada');
