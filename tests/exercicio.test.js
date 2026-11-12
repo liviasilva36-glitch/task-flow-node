@@ -9,6 +9,7 @@ describe('Testes do exercício em duplas', () => {
     expect(erro.detalhes).toBeUndefined();
   });
 
+        
   test('P2003 ao atualizar (PUT) vira 400 com mensagem específica', () => {
     const erroPrisma = { code: 'P2003' };
 

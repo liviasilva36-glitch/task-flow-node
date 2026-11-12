@@ -26,7 +26,11 @@ function validar(schema, origem) {
       } else if (regras.tipo && typeof valor !== regras.tipo) {
         erros.push(`O campo '${campo}' deve ser do tipo ${regras.tipo}`);
       }
-    } 
+
+      if (regras.valores && !regras.valores.includes(valor)) {
+        erros.push(`O campo '${campo}' deve ser um de: ${regras.valores.join(", ")}`);
+      }
+    }
 
     if (erros.length > 0) {
       throw criarErro(400, "Dados inválidos", erros);
