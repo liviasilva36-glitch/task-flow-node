@@ -1,4 +1,4 @@
-const prisma = require("../database/db");
+const prisma = require("../lib/prisma");
 
 // Relacionamentos incluídos nas consultas
 const incluirNomes = {
@@ -9,7 +9,7 @@ const incluirNomes = {
     select: { nome: true },
   },
   prioridades: {
-    select: { nome: true, descrição: true, cor: true },
+    select: { nome: true },
   },
 };
 
@@ -59,7 +59,7 @@ function formatarTarefa(tarefa) {
 
     usuario: tarefa.usuarios?.nome || tarefa.usuario || null,
     projeto: tarefa.projetos?.nome || tarefa.projeto || null,
-    prioridade: tarefa.prioridades?.descrição || tarefa.prioridade || "Média",
+    prioridade: tarefa.prioridades?.nome || tarefa.prioridade || "Média",
     prioridade_cor: tarefa.prioridades?.cor || tarefa.prioridade_cor || "#ccc",
 
     criadoEm: tarefa.criado_em || tarefa.data_criacao,
