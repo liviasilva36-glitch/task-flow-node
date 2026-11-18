@@ -75,3 +75,5 @@ describe("Testes do middleware validar", () => {
         expect(next).not.toHaveBeenCalled();
     });
 });
+
+test('quebra proposital', () => { expect(1).toBe(2); });
