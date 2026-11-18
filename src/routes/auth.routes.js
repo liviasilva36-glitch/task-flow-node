@@ -1,4 +1,4 @@
-const express = require("express");
+sconst express = require("express");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
@@ -57,6 +57,7 @@ router.post("/login", async (req, res) => {
 
     return res.status(500).json({
       erro: "Erro interno no servidor",
+      detalhe: erro.message,
     });
   }
 });
