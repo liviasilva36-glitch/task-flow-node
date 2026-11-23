@@ -1,23 +1,15 @@
-# Roda os testes da API a cada push e pull request na main
 name: Testes da API
 
 on:
   push:
-<<<<<<< HEAD
     branches: [main]
   pull_request:
     branches: [main]
-=======
-    branches: [main] # Se o seu branch principal for master, troque aqui
-  pull_request:
-    branches: [main] # E troque aqui também
->>>>>>> ca4c227 (add do arqv testes.yml)
 
 jobs:
   testes-api:
     runs-on: ubuntu-latest
 
-    # Variáveis dos testes (os segredos vêm do cofre)
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
