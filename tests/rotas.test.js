@@ -28,11 +28,16 @@ beforeAll(async () => {
     });
   }
 
-  const prioridade = await prisma.prioridades.findFirst();
+  let prioridade = await prisma.prioridades.findFirst();
+  if (!prioridade) {
+    prioridade = await prisma.prioridades.create({
+      data: { nome: 'Normal', ordem: 1 },
+    });
+  }
 
   USUARIO_ID = usuario.id;
   PROJETO_ID = projeto.id;
-  PRIORIDADE_ID = prioridade ? prioridade.id : 1;
+  PRIORIDADE_ID = prioridade.id;
 
   token = jwt.sign({ id: USUARIO_ID, nome: 'Teste' }, process.env.JWT_SECRET);
 });
@@ -183,7 +188,6 @@ describe('rotas da API', () => {
     expect(resposta.status).toBe(200);
     expect(Array.isArray(resposta.body)).toBe(true);
   });
-
 
   // Teste 8: criar e remover uma tarefa (Regra 2: independência)
   test('POST /tarefas cria (201) e o DELETE remove', async () => {
