@@ -3,9 +3,15 @@ name: Testes da API
 
 on:
   push:
+<<<<<<< HEAD
     branches: [main]
   pull_request:
     branches: [main]
+=======
+    branches: [main] # Se o seu branch principal for master, troque aqui
+  pull_request:
+    branches: [main] # E troque aqui também
+>>>>>>> ca4c227 (add do arqv testes.yml)
 
 jobs:
   testes-api:
